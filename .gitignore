@@ -1,0 +1,6 @@
+﻿# Build system generated folders
+.vscode/
+.vs/
+.idea/
+out/
+!*/out/

@@ -1,0 +1,30 @@
+﻿#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <chrono>
+
+#include <nbt/read.hpp>
+#include <nbt/inspect.hpp>
+
+int main() {
+	using std::cout, std::endl, std::vector, std::string, std::get_if, std::unordered_map,  NBT::Tag, std::chrono::steady_clock, std::chrono::duration_cast, std::chrono::microseconds;
+
+	cout << "========NBT========" << endl;
+
+	auto start = steady_clock::now();
+	auto asdf = NBT::IO::read("E:/a.cgb");
+	auto end = steady_clock::now();
+	cout << "Parse took " << duration_cast<microseconds>(end - start).count() << "us" << endl;
+
+	if (const auto* tagp = get_if<unordered_map<string, Tag>>(&asdf)) {
+		NBT::inspect(*tagp);
+		cout << "==========Test Completed==========" << endl; 
+	}
+	else {
+		cout << "Parse failed!" << endl;
+		const auto& errors = *get_if<vector<string>>(&asdf);
+		for (const auto& str : errors) cout << str << endl;
+	}
+	
+	return 0;
+}
