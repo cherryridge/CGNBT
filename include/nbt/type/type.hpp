@@ -9,7 +9,7 @@
 #include "VarText.hpp"
 #include "VarInt.hpp"
 
-namespace NBT {
+namespace NBT::TypeNS {
 	typedef uint8_t u8;
 	typedef char8_t c8;
 	typedef uint64_t u64;
@@ -19,18 +19,18 @@ namespace NBT {
 	concept equal = is_same_v<decay_t<T>, U>;
 
 	enum struct Types : u8 {
-		ObjectEnd = 0, Object, IVarInt, UVarInt, Bool, Hex, Float, Double, ArrayEnd, Array, Utf8, Raw, ArrayBool, ArrayHex, ArrayFloat, ArrayDouble, ArrayUtf8, ArrayRaw, Count
+		ObjectEnd = 0, Object, IVarInt, UVarInt, Bool, Hex, Float, Double, Array, Utf8, Raw, ArrayBool, ArrayHex, ArrayFloat, ArrayDouble, ArrayUtf8, ArrayRaw, Count
 	};
 
-	//No `ObjectEnd` and `ArrayEnd`.
+	//No `ObjectEnd`.
 	enum struct TypesN : u8 {
-		Object = 1, IVarInt, UVarInt, Bool, Hex, Float, Double, Array = 9, Utf8, Raw, ArrayBool, ArrayHex, ArrayFloat, ArrayDouble, ArrayUtf8, ArrayRaw, Count
+		Object = 1, IVarInt, UVarInt, Bool, Hex, Float, Double, Array, Utf8, Raw, ArrayBool, ArrayHex, ArrayFloat, ArrayDouble, ArrayUtf8, ArrayRaw, Count
 	};
 
 	inline constexpr Types toTypes(TypesN type) noexcept { return static_cast<Types>(type); }
 	//It is not guaranteed to success.
 	inline constexpr TypesN toTypesN(Types type) noexcept {
-		assert(type != Types::ObjectEnd && type != Types::ArrayEnd);
+		assert(type != Types::ObjectEnd);
 		return static_cast<TypesN>(type);
 	}
 
@@ -44,7 +44,6 @@ namespace NBT {
 			case Types::Hex: return "Hexadecimal";
 			case Types::Float: return "Float";
 			case Types::Double: return "Double";
-			case Types::ArrayEnd: return "ArrayEnd";
 			case Types::Array: return "Array";
 			case Types::Utf8: return "UTF8";
 			case Types::Raw: return "Raw";

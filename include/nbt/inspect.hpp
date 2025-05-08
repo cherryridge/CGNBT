@@ -9,10 +9,11 @@
 
 #include "type/type.hpp"
 
-namespace NBT {
+namespace NBT::Debug {
 	typedef uint8_t u8;
 	typedef int32_t i32;
 	typedef uint64_t u64;
+	using namespace NBT::TypeNS;
 	using std::unordered_map, std::string, std::cout, std::endl, std::setprecision, std::numeric_limits;
 
 	inline void inspectObject(const TagObject& data) noexcept;
@@ -173,7 +174,7 @@ namespace NBT {
 		for (u64 i = 0; i < data.payload.size(); i++) {
 			cout << "[" << i << "] ";
 			switch (type) {
-				case NBT::TypesN::Object:
+				case TypesN::Object:
 					cout << "Object:" << endl;
 					inspectObject(data.payload[i].tagObject);
 					cout << "EndObject.";

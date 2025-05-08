@@ -9,6 +9,13 @@ if(MSVC)
 	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
-add_executable("cgnbt_test" "main.cpp" "var.cpp")
+file(GLOB_RECURSE TEST_SOURCES CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
-target_link_libraries("cgnbt_test" PRIVATE CGNBT)
+add_executable("test" ${TEST_SOURCES})
+
+target_link_libraries("test" PRIVATE CGNBT)
+
+if(MSVC)
+	target_compile_options("test" PUBLIC "/ZI")
+	target_link_options("test" PUBLIC "/INCREMENTAL")
+endif()

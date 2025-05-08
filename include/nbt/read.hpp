@@ -8,16 +8,18 @@
 
 #include "type/type.hpp"
 #include "type/iotype.hpp"
+#include "readGZip.hpp"
 
 namespace NBT::IO {
 	typedef uint8_t u8;
 	typedef uint32_t u32;
 	typedef uint64_t u64;
+	using namespace NBT::TypeNS;
 	using std::vector, std::array, std::string, std::filesystem::path, std::variant, std::bit_cast, NBT::VarTextNS::readStr, std::to_string, NBT::VarIntNS::UReadInt;
 
 	//Doesn't move the cursor!
 	inline constexpr Types getType(u8 head) noexcept {
-		if ((head & 0xF0) == 0x90) switch (static_cast<TypesN>(head & 0x0F)) {
+		if ((head & 0xF0) == static_cast<u8>(Types::Array) << 4) switch (static_cast<TypesN>(head & 0x0F)) {
 			case TypesN::Bool:   return Types::ArrayBool;
 			case TypesN::Hex:    return Types::ArrayHex;
 			case TypesN::Float:  return Types::ArrayFloat;
@@ -30,7 +32,7 @@ namespace NBT::IO {
 	}
 	//Doesn't move the cursor!
 	inline constexpr TypesN getTypeN(u8 head) noexcept {
-		if ((head & 0xF0) == 0x90) switch (static_cast<TypesN>(head & 0x0F)) {
+		if ((head & 0xF0) == static_cast<u8>(Types::Array) << 4) switch (static_cast<TypesN>(head & 0x0F)) {
 			case TypesN::Bool:   return TypesN::ArrayBool;
 			case TypesN::Hex:    return TypesN::ArrayHex;
 			case TypesN::Float:  return TypesN::ArrayFloat;
@@ -70,6 +72,13 @@ namespace NBT::IO {
 			vector<string> error;
 			error.push_back("File failed to open: " + _path.string());
 			return error;
+		}
+		array<u8, 2> header{};
+		cursor.getContent(0, 2, header.data());
+		//Not GZipped.
+		if (header[0] == 'c' && header[1] == 'g') cursor += 2;
+		else { //GZipped
+			//todo
 		}
 		//Caveat: We can actually treat the top level tags as they are in a embedded `Object` tag.
 		TagObject topLevel(12914);
@@ -304,7 +313,7 @@ namespace NBT::IO {
 				}
 				break;
 			}
-			default: { //ObjectEnd, ArrayEnd, etc.
+			default: { //ObjectEnd, etc.
 				string temp("Invalid second type ");
 				temp += to_string(static_cast<u8>(type));
 				temp += " at pos ";
@@ -313,8 +322,6 @@ namespace NBT::IO {
 				return false;
 			}
 		}
-		//Pass ArrayEnd tag.
-		++cursor;
 		return true;
 	}
 
@@ -361,8 +368,7 @@ namespace NBT::IO {
 		//We need to get rid of the head anyways, so why not getting rid of the rest as well?
 		//todo: SIMD?
 		for (u64 i = 0; i < count; i++) result.payload[i] &= 0x01;
-		//Skip `ArrayEnd`. If there is no `ArrayEnd`, putting cursor behind EOF + 1 will throw.
-		cursor += count + 1;
+		cursor += count;
 		return true;
 	}
 
@@ -373,7 +379,7 @@ namespace NBT::IO {
 		if (actualLength < count) return false;
 		//todo: SIMD?
 		for (u64 i = 0; i < count; i++) result.payload[i] &= 0x0F;
-		cursor += count + 1;
+		cursor += count;
 		return true;
 	}
 
@@ -382,7 +388,7 @@ namespace NBT::IO {
 		result.payload.resize(count);
 		u64 actualLength = cursor.getContent(cursor.current(), count * 4, bit_cast<u8*>(result.payload.data()));
 		if (actualLength < count * 4) return false;
-		cursor += count * 4 + 1;
+		cursor += count * 4;
 		return true;
 	}
 
@@ -391,7 +397,7 @@ namespace NBT::IO {
 		result.payload.resize(count);
 		u64 actualLength = cursor.getContent(cursor.current(), count * 8, bit_cast<u8*>(result.payload.data()));
 		if (actualLength < count * 8) return false;
-		cursor += count * 8 + 1;
+		cursor += count * 8;
 		return true;
 	}
 
@@ -425,8 +431,7 @@ namespace NBT::IO {
 		memcpy(result.payload.data(), p, cpByteLength);
 		result.count = cpCount;
 		delete[] p;
-		//Go past `ArrayEnd`.
-		cursor += cpByteLength + 1;
+		cursor += cpByteLength;
 		return true;
 	}
 
@@ -435,7 +440,7 @@ namespace NBT::IO {
 		result.payload.resize(count);
 		u64 actualLength = cursor.getContent(cursor.current(), count, result.payload.data());
 		if (actualLength < count) return false;
-		cursor += count + 1;
+		cursor += count;
 		return true;
 	}
 }

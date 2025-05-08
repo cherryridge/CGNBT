@@ -3,7 +3,7 @@
 project("CGNBT")
 
 set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 cmake_policy(SET CMP0091 NEW)
@@ -11,19 +11,20 @@ if(MSVC)
 	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
-file(GLOB_RECURSE CGNBT_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/*.cpp")
-
-add_library(${PROJECT_NAME} STATIC ${CGNBT_SOURCES})
-
-target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/include")
-
-option(BUILD_TESTS "Build test programs" ON)
-
-if(BUILD_TESTS)
-	add_subdirectory("tests")
+if (NOT DEFINED ZLIBNG_ROOT)
+	set(ZLIBNG_ROOT "libs/zlib-ng" CACHE PATH "Folder for zlib-ng dependency.")
 endif()
 
-if(MSVC)
-	target_compile_options(${PROJECT_NAME} PUBLIC "/ZI")
-	target_link_options(${PROJECT_NAME} PUBLIC "/INCREMENTAL")
-endif()
+set(ZLIB_ENABLE_TESTS   OFF CACHE BOOL "")
+set(ZLIBNG_ENABLE_TESTS OFF CACHE BOOL "")
+set(WITH_GTEST          OFF CACHE BOOL "")
+
+add_subdirectory(${ZLIBNG_ROOT})
+
+add_subdirectory("tests")
+
+add_library(${PROJECT_NAME} INTERFACE)
+
+target_include_directories(${PROJECT_NAME} INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
+target_link_libraries(${PROJECT_NAME} INTERFACE zlibstatic)

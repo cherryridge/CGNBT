@@ -3,20 +3,19 @@
 #include <unordered_map>
 #include <chrono>
 
-#include <nbt/read.hpp>
-#include <nbt/inspect.hpp>
+#include <nbt/nbt.hpp>
 
 int main() {
-	using std::cout, std::endl, std::vector, std::string, std::get_if, std::unordered_map,  NBT::Tag, std::chrono::steady_clock, std::chrono::duration_cast, std::chrono::microseconds;
+	using std::cout, std::endl, std::vector, std::string, std::get_if, std::unordered_map, std::chrono::steady_clock, std::chrono::duration_cast, std::chrono::microseconds;
 
 	cout << "========NBT========" << endl;
 
 	auto start = steady_clock::now();
-	auto asdf = NBT::IO::read("E:/a.cgb");
+	auto asdf = NBT::read("E:/a.cgb");
 	auto end = steady_clock::now();
 	cout << "Parse took " << duration_cast<microseconds>(end - start).count() << "us" << endl;
 
-	if (const auto* tagp = get_if<unordered_map<string, Tag>>(&asdf)) {
+	if (const auto* tagp = get_if<unordered_map<string, NBT::Tag>>(&asdf)) {
 		NBT::inspect(*tagp);
 		cout << "==========Test Completed==========" << endl; 
 	}

@@ -3,7 +3,7 @@
 
 #include "../type/iotype.hpp"
 
-//Note: This implementation uses `nullptr` to indicate empty string "", and converts "\0" to "" implicitly.
+//Note: This implementation converts `"\0"` to `""` implicitly.
 //VarText is not for program storage. Don't use it like normal `string`.
 
 namespace NBT::VarTextNS {
