@@ -1,6 +1,24 @@
-﻿# Build system generated folders
+﻿# OS artifacts
+.DS_Store
+Thumbs.db
+[Dd]esktop.ini
+
+# Build system generated folders
 .vscode/
 .vs/
+*.suo
+*.user
+*.VC.db
 .idea/
+*.iws
+*.iml
+*.ipr
+.netrwhist
+.vimcache
+.cache
+compile_commands.json
+
+build/
+!*/build/
 out/
 !*/out/
