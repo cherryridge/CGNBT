@@ -8,8 +8,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-cmake_policy(SET CMP0091 NEW)
+set(CMAKE_FIND_USE_PACKAGE_REGISTRY FALSE)
+set(CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY FALSE)
+
 if(MSVC)
+    cmake_policy(SET CMP0091 NEW)
     add_compile_definitions(
         WIN32_LEAN_AND_MEAN
         NOMINMAX
@@ -19,15 +22,14 @@ endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
 
-if (NOT DEFINED ZLIBNG_ROOT)
-    set(ZLIBNG_ROOT "libs/zlib-ng" CACHE PATH "Folder for zlib-ng dependency.")
+option(CGNBT_HAS_ZLIBNG "Whether to not add zlib-ng dependency." OFF)
+
+if (NOT CGNBT_HAS_ZLIBNG)
+    set(ZLIB_ENABLE_TESTS   OFF CACHE BOOL "")
+    set(ZLIBNG_ENABLE_TESTS OFF CACHE BOOL "")
+    set(WITH_GTEST          OFF CACHE BOOL "")
+    add_subdirectory(${ZLIBNG_ROOT})
 endif()
-
-set(ZLIB_ENABLE_TESTS   OFF CACHE BOOL "")
-set(ZLIBNG_ENABLE_TESTS OFF CACHE BOOL "")
-set(WITH_GTEST          OFF CACHE BOOL "")
-
-add_subdirectory(${ZLIBNG_ROOT})
 
 add_subdirectory("tests")
 
