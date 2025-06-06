@@ -28,7 +28,7 @@ if (NOT CGNBT_HAS_ZLIBNG)
     set(ZLIB_ENABLE_TESTS   OFF CACHE BOOL "")
     set(ZLIBNG_ENABLE_TESTS OFF CACHE BOOL "")
     set(WITH_GTEST          OFF CACHE BOOL "")
-    add_subdirectory(${ZLIBNG_ROOT})
+    add_subdirectory("libs/zlib_ng")
 endif()
 
 add_subdirectory("tests")
