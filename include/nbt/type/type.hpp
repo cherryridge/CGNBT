@@ -1,10 +1,10 @@
 ﻿#pragma once
-#include <vector>
-#include <unordered_map>
 #include <array>
 #include <cassert>
 #include <string>
 #include <type_traits>
+#include <vector>
+#include <boost/unordered/unordered_flat_map.hpp>
 
 #include "VarText.hpp"
 #include "VarInt.hpp"
@@ -13,7 +13,7 @@ namespace NBT::TypeNS {
     typedef uint8_t u8;
     typedef char8_t c8;
     typedef uint64_t u64;
-    using std::vector, std::array, std::unordered_map, std::string, std::u8string, std::move, std::forward, std::enable_if_t, std::decay_t, std::is_same_v, VarTextNS::VarText, VarIntNS::UVarInt, VarIntNS::IVarInt;
+    using std::vector, std::array, std::string, std::u8string, std::move, std::forward, std::enable_if_t, std::decay_t, std::is_same_v, boost::unordered_flat_map, VarTextNS::VarText, VarIntNS::UVarInt, VarIntNS::IVarInt;
 
     template<typename T, typename U>
     concept equal = is_same_v<decay_t<T>, U>;
@@ -27,46 +27,46 @@ namespace NBT::TypeNS {
         Object = 1, IVarInt, UVarInt, Bool, Hex, Float, Double, Array, Utf8, Raw, ArrayBool, ArrayHex, ArrayFloat, ArrayDouble, ArrayUtf8, ArrayRaw, Count
     };
 
-    inline constexpr Types toTypes(TypesN type) noexcept { return static_cast<Types>(type); }
+    [[nodiscard]] inline constexpr Types toTypes(TypesN type) noexcept { return static_cast<Types>(type); }
     //It is not guaranteed to success.
-    inline constexpr TypesN toTypesN(Types type) noexcept {
+    [[nodiscard]] inline constexpr TypesN toTypesN(Types type) noexcept {
         assert(type != Types::ObjectEnd);
         return static_cast<TypesN>(type);
     }
 
-    inline constexpr const char* getTypeStr(Types type) noexcept {
+    [[nodiscard]] inline constexpr const char* getTypeStr(Types type) noexcept {
         switch (type) {
-            case Types::ObjectEnd: return "ObjectEnd";
-            case Types::Object: return "Object";
-            case Types::IVarInt: return "IVarInt";
-            case Types::UVarInt: return "UVarInt";
-            case Types::Bool: return "Bool";
-            case Types::Hex: return "Hexadecimal";
-            case Types::Float: return "Float";
-            case Types::Double: return "Double";
-            case Types::Array: return "Array";
-            case Types::Utf8: return "UTF8";
-            case Types::Raw: return "Raw";
-            case Types::ArrayBool: return "Array(Bool";
-            case Types::ArrayHex: return "Array(Hexadecimal";
-            case Types::ArrayFloat: return "Array(Float";
+            case Types::ObjectEnd:   return "ObjectEnd";
+            case Types::Object:      return "Object";
+            case Types::IVarInt:     return "IVarInt";
+            case Types::UVarInt:     return "UVarInt";
+            case Types::Bool:        return "Bool";
+            case Types::Hex:         return "Hexadecimal";
+            case Types::Float:       return "Float";
+            case Types::Double:      return "Double";
+            case Types::Array:       return "Array";
+            case Types::Utf8:        return "UTF8";
+            case Types::Raw:         return "Raw";
+            case Types::ArrayBool:   return "Array(Bool";
+            case Types::ArrayHex:    return "Array(Hexadecimal";
+            case Types::ArrayFloat:  return "Array(Float";
             case Types::ArrayDouble: return "Array(Double";
-            case Types::ArrayUtf8: return "Array(UTF8";
-            case Types::ArrayRaw: return "Array(Raw";
-            default: return "Invalid";
+            case Types::ArrayUtf8:   return "Array(UTF8";
+            case Types::ArrayRaw:    return "Array(Raw";
+            default:                 return "Invalid";
         }
     }
 
     struct Tag;
 
     struct TagObject {
-        unordered_map<string, Tag> payload;
+        unordered_flat_map<string, Tag> payload;
 
         TagObject& operator=(const TagObject& copy) noexcept = default;
         TagObject& operator=(TagObject&& move) noexcept = default;
         TagObject(const TagObject& copy) noexcept = default;
         TagObject(TagObject&& move) noexcept = default;
-        template<typename T, typename = enable_if_t<equal<T, unordered_map<string, Tag>>>>
+        template<typename T, typename = enable_if_t<equal<T, unordered_flat_map<string, Tag>>>>
         TagObject(T&& payload) noexcept : payload(forward<T>(payload)) {}
         #pragma warning(suppress: 26495)
         TagObject(int) noexcept {}

@@ -28,7 +28,7 @@ namespace NBT::VarIntNS {
     concept Int = Sint<T> || Uint<T>;
 
     struct UVarInt {
-        u8 data[10];
+        array<u8, 10> data;
         u8 length;
 
         UVarInt() noexcept {
@@ -39,14 +39,14 @@ namespace NBT::VarIntNS {
         UVarInt& operator=(const UVarInt& copy) noexcept {
             if (this == &copy) goto same;
             length = copy.length;
-            memcpy(data, copy.data, length);
+            memcpy(data.data(), copy.data.data(), length);
             same: return *this;
         }
 
         UVarInt& operator=(UVarInt&& move) noexcept {
             if (this == &move) goto same;
             length = move.length;
-            memcpy(data, move.data, length);
+            memcpy(data.data(), move.data.data(), length);
             same: return *this;
         }
 
@@ -60,7 +60,7 @@ namespace NBT::VarIntNS {
         //For pushing in data directly. You should know what you're doing.
         UVarInt(const u8* input, u64 _length) noexcept {
             length = _length;
-            memcpy(data, input, length);
+            memcpy(data.data(), input, length);
         }
 
         UVarInt(u8 input) noexcept : UVarInt(static_cast<u64>(input)) {}
@@ -147,7 +147,7 @@ namespace NBT::VarIntNS {
                 #pragma warning(suppress: 28020)
                 buffer[cursor - 1] += MSB;
                 length = cursor;
-                memcpy(data, &buffer, length);
+                memcpy(data.data(), &buffer, length);
             }
         }
     };

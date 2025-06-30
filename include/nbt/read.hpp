@@ -1,9 +1,10 @@
 ﻿#pragma once
-#include <vector>
-#include <string>
 #include <array>
 #include <filesystem>
+#include <string>
 #include <variant>
+#include <vector>
+#include <boost/unordered/unordered_flat_map.hpp>
 
 #include "type/type.hpp"
 #include "type/iotype.hpp"
@@ -14,7 +15,7 @@ namespace NBT::IO {
     typedef uint32_t u32;
     typedef uint64_t u64;
     using namespace NBT::TypeNS;
-    using std::vector, std::array, std::string, std::filesystem::path, std::variant, std::bit_cast, NBT::VarTextNS::readStr, std::to_string, NBT::VarIntNS::UReadInt;
+    using boost::unordered_flat_map, std::vector, std::array, std::string, std::filesystem::path, std::variant, std::bit_cast, NBT::VarTextNS::readStr, std::to_string, NBT::VarIntNS::UReadInt;
 
     //Doesn't move the cursor!
     inline constexpr Types getType(u8 head) noexcept {
@@ -65,7 +66,7 @@ namespace NBT::IO {
 
     inline vector<string> readErrors;
 
-    inline variant<unordered_map<string, Tag>, vector<string>> read(const path& _path) noexcept {
+    inline variant<unordered_flat_map<string, Tag>, vector<string>> read(const path& _path) noexcept {
         FileCursor cursor(_path);
         if (!cursor.active) {
             vector<string> error;

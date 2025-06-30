@@ -31,10 +31,26 @@ if (NOT CGNBT_HAS_ZLIBNG)
     add_subdirectory("libs/zlib_ng")
 endif()
 
-add_subdirectory("tests")
+option(CGNBT_BUILD_TESTS "Whether to build test programs." ON)
+
+if(CGNBT_BUILD_TESTS)
+    add_subdirectory("tests")
+endif()
 
 add_library(${PROJECT_NAME} INTERFACE)
 
-target_include_directories(${PROJECT_NAME} INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(${PROJECT_NAME} INTERFACE
+    "libs/boost/assert/include"
+    "libs/boost/config/include"
+    "libs/boost/container_hash/include"
+    "libs/boost/core/include"
+    "libs/boost/describe/include"
+    "libs/boost/mp11/include"
+    "libs/boost/predef/include"
+    "libs/boost/static_assert/include"
+    "libs/boost/throw_exception/include"
+    "libs/boost/unordered/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
 
 target_link_libraries(${PROJECT_NAME} INTERFACE zlibstatic)

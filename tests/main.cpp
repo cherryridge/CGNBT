@@ -1,12 +1,12 @@
 ﻿#include <iostream>
 #include <vector>
-#include <unordered_map>
 #include <chrono>
+#include <boost/unordered/unordered_flat_map.hpp>
 
 #include <nbt/nbt.hpp>
 
 int main() {
-    using std::cout, std::endl, std::vector, std::string, std::get_if, std::unordered_map, std::chrono::steady_clock, std::chrono::duration_cast, std::chrono::microseconds;
+    using std::cout, std::endl, std::vector, std::string, std::get_if, boost::unordered_flat_map, std::chrono::steady_clock, std::chrono::duration_cast, std::chrono::microseconds;
 
     cout << "========NBT========" << endl;
 
@@ -15,7 +15,7 @@ int main() {
     auto end = steady_clock::now();
     cout << "Parse took " << duration_cast<microseconds>(end - start).count() << "us" << endl;
 
-    if (const auto* tagp = get_if<unordered_map<string, NBT::Tag>>(&asdf)) {
+    if (const auto* tagp = get_if<unordered_flat_map<string, NBT::Tag>>(&asdf)) {
         NBT::inspect(*tagp);
         cout << "==========Test Completed==========" << endl; 
     }

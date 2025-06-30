@@ -1,8 +1,8 @@
 ﻿#pragma once
-#include <unordered_map>
-#include <string>
 #include <iostream>
 #include <limits>
+#include <string>
+#include <boost/unordered/unordered_flat_map.hpp>
 #ifdef _WIN32
     #include <Windows.h>
 #endif // _WIN32
@@ -14,7 +14,7 @@ namespace NBT::Debug {
     typedef int32_t i32;
     typedef uint64_t u64;
     using namespace NBT::TypeNS;
-    using std::unordered_map, std::string, std::cout, std::endl, std::setprecision, std::numeric_limits;
+    using boost::unordered_flat_map, std::string, std::cout, std::endl, std::setprecision, std::numeric_limits;
 
     inline void inspectObject(const TagObject& data) noexcept;
     inline void inspectIVarInt(const TagIVarInt& data) noexcept;
@@ -35,7 +35,7 @@ namespace NBT::Debug {
 
     inline constexpr u64 depth = 0;
 
-    inline void inspect(const unordered_map<string, Tag>& data) noexcept {
+    inline void inspect(const unordered_flat_map<string, Tag>& data) noexcept {
         #ifdef _WIN32
         SetConsoleOutputCP(CP_UTF8);
         SetConsoleCP(CP_UTF8);
