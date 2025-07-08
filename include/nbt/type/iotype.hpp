@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <string>
 #include <type_traits>
-#include <zlib-ng.h>
+#include <zstd.h>
 
 namespace NBT::IO {
     typedef int8_t i8;
@@ -177,9 +177,9 @@ namespace NBT::IO {
         ~FileCursor() { if (stream.is_open()) stream.close(); }
     };
 
-    struct GZipFile {
+    struct ZSTDFile {
 
-        GZipFile(const path& _path) noexcept {
+        ZSTDFile(const path& _path) noexcept {
 
         }
     };
