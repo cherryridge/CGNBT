@@ -10,7 +10,7 @@ If the host software already has `zlib-ng` as dependency, set `ZLIBNG_ROOT` opti
 
 ## Documentation
 
-See CGNBT's specification: https://docs.cherrygrove.dev/references/format/cgnbt
+See CGNBT's specification: https://docs.cherrygrove.dev/cg/references/format/cgnbt
 
 ### Implementation Specific
 
