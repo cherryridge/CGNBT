@@ -37,10 +37,39 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
 #----------------------------------
 
-#--------------zstd----------------
-option(CGNBT_HAS_ZSTD "Whether to not add zstd dependency privately." OFF)
+#------------Physfs----------------
+option(CGNBT_HAS_PHYSFS "Whether to not add Physfs dependency privately." OFF)
+
+if(NOT CGNBT_HAS_PHYSFS)
+    set(CGNBT_PHYSFS_DIRECTORY "libs/physfs" CACHE STRING "")
+
+    set(PHYSFS_ARCHIVE_ZIP         ON  CACHE BOOL "")
+    set(PHYSFS_ARCHIVE_7Z          ON  CACHE BOOL "")
+    set(PHYSFS_ARCHIVE_GRP         OFF CACHE BOOL "")
+    set(PHYSFS_ARCHIVE_WAD         OFF CACHE BOOL "")
+    set(PHYSFS_ARCHIVE_CSM         OFF CACHE BOOL "")
+    set(PHYSFS_ARCHIVE_HOG         OFF CACHE BOOL "")
+    set(PHYSFS_ARCHIVE_MVL         OFF CACHE BOOL "")
+    set(PHYSFS_ARCHIVE_QPAK        OFF CACHE BOOL "")
+    set(PHYSFS_ARCHIVE_SL          OFF CACHE BOOL "")
+    set(PHYSFS_ARCHIVE_ISO9660     OFF CACHE BOOL "")
+    set(PHYSFS_ARCHIVE_VDF         OFF CACHE BOOL "")
+    set(PHYSFS_ARCHIVE_LECARCHIVES OFF CACHE BOOL "")
+    set(PHYSFS_BUILD_STATIC        ON  CACHE BOOL "")
+    set(PHYSFS_BUILD_SHARED        OFF CACHE BOOL "")
+    set(PHYSFS_BUILD_TEST          OFF CACHE BOOL "")
+    set(PHYSFS_DISABLE_INSTALL     ON  CACHE BOOL "")
+    set(PHYSFS_BUILD_DOCS          OFF CACHE BOOL "")
+    add_subdirectory(${CGNBT_PHYSFS_DIRECTORY})
+endif()
+#----------------------------------
+
+#--------------Zstd----------------
+option(CGNBT_HAS_ZSTD "Whether to not add Zstd dependency privately." OFF)
 
 if (NOT CGNBT_HAS_ZSTD)
+    set(CGNBT_ZSTD_DIRECTORY "libs/zstd" CACHE STRING "")
+
     set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "")
     set(BUILD_TESTING       OFF CACHE BOOL "")
     set(ZSTD_BUILD_STATIC   ON  CACHE BOOL "")
@@ -48,7 +77,7 @@ if (NOT CGNBT_HAS_ZSTD)
     if(MSVC)
         set(ZSTD_USE_STATIC_RUNTIME ON CACHE BOOL "")
     endif()
-    add_subdirectory("libs/zstd/build/cmake")
+    add_subdirectory("${CGNBT_ZSTD_DIRECTORY}/build/cmake")
 endif()
 #----------------------------------
 
@@ -74,9 +103,13 @@ target_include_directories(${PROJECT_NAME} INTERFACE
     "libs/boost/throw_exception/include"
     "libs/boost/unordered/include"
 
-    "libs/zstd/lib"
+    "${CGNBT_PHYSFS_DIRECTORY}/src"
+    "${CGNBT_ZSTD_DIRECTORY}/lib"
 
     "${CMAKE_SOURCE_DIR}/include"
 )
 
-target_link_libraries(${PROJECT_NAME} INTERFACE libzstd_static)
+target_link_libraries(${PROJECT_NAME} INTERFACE
+    physfs-static
+    libzstd_static
+)

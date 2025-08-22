@@ -1,8 +1,6 @@
 ﻿#pragma once
 #include <array>
-#include <cassert>
 #include <iostream>
-#include <limits>
 #include <type_traits>
 
 #include "iotype.hpp"
@@ -16,7 +14,7 @@ namespace NBT::VarIntNS {
     typedef uint32_t u32;
     typedef int64_t i64;
     typedef uint64_t u64;
-    using std::ostream, std::array, std::enable_if_t, std::is_same_v, std::move;
+    using std::ostream, std::array, std::enable_if_t, std::is_same_v, std::move, NBT::IO::FileReader;
 
     inline constexpr u8 MSB = 0x80;
 
@@ -31,7 +29,7 @@ namespace NBT::VarIntNS {
         array<u8, 10> data;
         u8 length;
 
-        UVarInt() noexcept {
+        explicit UVarInt() noexcept {
             length = 1;
             data[0] = MSB;
         }
@@ -153,10 +151,10 @@ namespace NBT::VarIntNS {
     };
 
     struct IVarInt {
-        u8 data[10];
+        array<u8, 10> data;
         u8 length;
 
-        IVarInt() noexcept {
+        explicit IVarInt() noexcept {
             length = 1;
             data[0] = MSB;
         }
@@ -164,14 +162,14 @@ namespace NBT::VarIntNS {
         IVarInt& operator=(const IVarInt& copy) noexcept {
             if (this == &copy) goto same;
             length = copy.length;
-            memcpy(data, copy.data, length);
+            memcpy(data.data(), copy.data.data(), length);
             same: return *this;
         }
 
         IVarInt& operator=(IVarInt&& move) noexcept{
             if (this == &move) goto same;
             length = move.length;
-            memcpy(data, move.data, length);
+            memcpy(data.data(), move.data.data(), length);
             same: return *this;
         }
 
@@ -185,7 +183,7 @@ namespace NBT::VarIntNS {
         //For pushing in data directly. You should know what you're doing.
         IVarInt(const u8* input, u64 _length) noexcept {
             length = _length;
-            memcpy(data, input, length);
+            memcpy(data.data(), input, length);
         }
 
         IVarInt(i8 input) noexcept : IVarInt(static_cast<i64>(input)) {}
@@ -277,43 +275,13 @@ namespace NBT::VarIntNS {
                 #pragma warning(suppress: 28020)
                 buffer[cursor - 1] += MSB;
                 length = cursor;
-                memcpy(data, &buffer, length);
+                memcpy(data.data(), &buffer, length);
             }
         }
     };
 
-    //Sets the pointer to the start of the next byte.
-    inline IVarInt IReadRaw(u8* input) noexcept {
-        if (input == nullptr) return IVarInt();
-        IVarInt result(true);
-        result.data[0] = *input;
-        result.length = 1;
-        while (!(*input & MSB)) {
-            input++;
-            result.data[result.length] = *input;
-            result.length++;
-        }
-        input++;
-        return result;
-    }
-
-    //Sets the pointer to the start of the next byte.
-    inline UVarInt UReadRaw(u8* input) noexcept {
-        if (input == nullptr) return UVarInt();
-        UVarInt result(true);
-        result.data[0] = *input;
-        result.length = 1;
-        while (!(*input & MSB)) {
-            input++;
-            result.data[result.length] = *input;
-            result.length++;
-        }
-        input++;
-        return result;
-    }
-
-    //Sets `cursor.current` to the start of the next byte.
-    inline IVarInt IRead(NBT::IO::FileCursor& cursor) noexcept {
+    //Sets cursor to the start of the next byte.
+    inline IVarInt readIVarInt(FileReader& cursor) noexcept {
         IVarInt result(true);
         result.data[0] = *cursor;
         result.length = 1;
@@ -326,8 +294,8 @@ namespace NBT::VarIntNS {
         return result;
     }
 
-    //Sets `cursor.current` to the start of the next byte.
-    inline UVarInt URead(NBT::IO::FileCursor& cursor) noexcept {
+    //Sets cursor to the start of the next byte.
+    inline UVarInt readUVarInt(FileReader& cursor) noexcept {
         UVarInt result(true);
         result.data[0] = *cursor;
         result.length = 1;
@@ -340,8 +308,8 @@ namespace NBT::VarIntNS {
         return result;
     }
 
-    //Sets `cursor.current` to the start of the next byte.
-    inline u64 UReadInt(NBT::IO::FileCursor& cursor) noexcept {
+    //Sets cursor to the start of the next byte.
+    inline u64 readUInt(FileReader& cursor) noexcept {
         u8 length = 1, buffer[10]{ 0 };
         buffer[0] = *cursor;
         while (!(*cursor & MSB)) {
@@ -355,9 +323,9 @@ namespace NBT::VarIntNS {
         return result;
     }
 
-    //Sets `cursor.current` to the start of the next byte.
-    inline i64 IReadInt(NBT::IO::FileCursor& cursor) noexcept {
-        auto _unsigned = UReadInt(cursor);
+    //Sets cursor to the start of the next byte.
+    inline i64 readSInt(FileReader& cursor) noexcept {
+        auto _unsigned = readUInt(cursor);
         return (_unsigned >> 1) ^ -(_unsigned & 1);
     }
 }

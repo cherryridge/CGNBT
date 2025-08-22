@@ -1,7 +1,8 @@
 ﻿#pragma once
 #include <string>
+#include <vector>
 
-#include "../type/iotype.hpp"
+#include "iotype.hpp"
 
 //Note: This implementation converts `"\0"` to `""` implicitly.
 //VarText is not for program storage. Don't use it like normal `string`.
@@ -9,7 +10,7 @@
 namespace NBT::VarTextNS {
     typedef uint8_t u8;
     typedef uint64_t u64;
-    using std::string, std::ostream, std::move, NBT::IO::FileCursor, std::bit_cast;
+    using std::string, std::vector, std::ostream, std::move, NBT::IO::FileReader;
 
     inline constexpr u8 MSB = 0x80, THRESHOLD = 16;
 
@@ -20,7 +21,7 @@ namespace NBT::VarTextNS {
         };
         u64 length;
 
-        VarText() noexcept {
+        explicit VarText() noexcept {
             length = 1;
             local[0] = MSB;
         };
@@ -36,13 +37,13 @@ namespace NBT::VarTextNS {
             same: return *this;
         }
 
-        VarText& operator=(VarText&& move) noexcept {
-            if (this == &move) goto same;
-            length = move.length;
-            if (length <= THRESHOLD) memcpy(local, move.local, length);
+        VarText& operator=(VarText&& _move) noexcept {
+            if (this == &_move) goto same;
+            length = _move.length;
+            if (length <= THRESHOLD) memcpy(local, _move.local, length);
             else {
-                heapStart = move.heapStart;
-                move.heapStart = nullptr;
+                heapStart = _move.heapStart;
+                _move.heapStart = nullptr;
                 //Don't set `move.length` to `0`! We need the indication to check if `heapStart` is `nullptr` in the first place.
             }
             same: return *this;
@@ -123,7 +124,7 @@ namespace NBT::VarTextNS {
             //Invalid data/Empty string
             if ((length == 1 && local[0] == MSB) || (length > THRESHOLD && heapStart == nullptr)) return string();
             const_cast<u8*>(length > THRESHOLD ? heapStart : local)[length - 1] -= MSB;
-            string result(bit_cast<char*>(length > THRESHOLD ? heapStart : local), length);
+            string result(reinterpret_cast<const char*>(length > THRESHOLD ? heapStart : local), length);
             const_cast<u8*>(length > THRESHOLD ? heapStart : local)[length - 1] += MSB;
             return result;
         }
@@ -166,6 +167,30 @@ namespace NBT::VarTextNS {
         }
     };
 
+    //Sets cursor to the start of the next byte.
+    inline VarText read(FileReader& cursor) noexcept {
+        vector<u8> buffer;
+        do {
+            buffer.push_back(*cursor);
+            ++cursor;
+        } while (!(*cursor & MSB));
+        VarText result(buffer.data(), buffer.size());
+        return result;
+    }
+
+    inline string readStr(FileReader& cursor) noexcept {
+        vector<u8> buffer;
+        while (!(*cursor & MSB)) {
+            buffer.push_back(*cursor);
+            ++cursor;
+        }
+        buffer.push_back(*cursor);
+        ++cursor;
+        buffer[buffer.size() - 1] -= MSB;
+        buffer.push_back('\0');
+        return string(reinterpret_cast<char*>(buffer.data()));
+    }
+
     //Sets the pointer to the start of the next byte.
     inline VarText readRaw(u8* input) noexcept {
         if (input == nullptr) return VarText();
@@ -177,37 +202,6 @@ namespace NBT::VarTextNS {
         }
         input++;
         return VarText(p, length);
-    }
-
-    //Sets `cursor.current` to the start of the next byte.
-    inline VarText read(FileCursor& cursor) noexcept {
-        u64 start = cursor.current(), length = 1;
-        while (!(*cursor & MSB)) {
-            ++cursor;
-            length++;
-        }
-        ++cursor;
-        u8* const p = new u8[length];
-        cursor.getContent(start, length, p);
-        VarText result(p, length);
-        delete[] p;
-        return result;
-    }
-
-    inline string readStr(FileCursor& cursor) noexcept {
-        u64 start = cursor.current(), length = 1;
-        while (!(*cursor & MSB)) {
-            ++cursor;
-            length++;
-        }
-        ++cursor;
-        u8* const p = new u8[length + 1];
-        cursor.getContent(start, length, p);
-        p[length - 1] -= MSB;
-        p[length] = NULL;
-        string result(bit_cast<char*>(p), length);
-        delete[] p;
-        return result;
     }
 }
 

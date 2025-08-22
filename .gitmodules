@@ -38,6 +38,10 @@
 	path = libs/boost/unordered
 	url = https://github.com/boostorg/unordered
 
+[submodule "libs/physfs"]
+	path = libs/physfs
+	url = https://github.com/icculus/physfs
+
 [submodule "libs/zstd"]
 	path = libs/zstd
 	url = https://github.com/facebook/zstd
