@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <array>
+#include <format>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -8,13 +9,15 @@
 #define ZSTD_STATIC_LINKING_ONLY
 #include <zstd.h>
 
+#include "error.hpp"
+
 namespace NBT::IO {
     typedef uint8_t u8;
     typedef uint16_t u16;
     typedef uint32_t u32;
     typedef int64_t i64;
     typedef uint64_t u64;
-    using std::array, std::move, std::swap, std::min, std::vector, std::string, std::streampos, std::streamoff, std::logic_error, std::span;
+    using std::array, std::format, std::move, std::swap, std::min, std::vector, std::string, std::streampos, std::streamoff, std::out_of_range, std::span, NBT::Error::pushError;
 
     //note: I currently don't want to get target's filesystem's alignment size dynamically. This part is too platform-specific and require a lot of experiments and tests.
     inline constexpr u16 BUFFER_SIZE = 4096;
@@ -39,13 +42,13 @@ namespace NBT::IO {
                     src = { inBuffer.data(), 0, 0 };
                     fetchBlock();
                 }
-                //todo: show error
-                else return;
+                else pushError(format("File {} is not a valid CGNBT file!", path));
             }
+            else pushError(format("File {} failed to open, or is invalid!", path));
         }
 
-        [[nodiscard]] FileReader(const FileReader&) = delete;
-        [[nodiscard]] FileReader& operator=(const FileReader&) = delete;
+        FileReader(const FileReader&) = delete;
+        FileReader& operator=(const FileReader&) = delete;
         [[nodiscard]] FileReader(FileReader&&) noexcept = default;
         [[nodiscard]] FileReader& operator=(FileReader&&) noexcept = default;
 
@@ -53,7 +56,7 @@ namespace NBT::IO {
         [[nodiscard]] bool eof() const noexcept { return status == Status::End; }
 
         [[nodiscard]] u8 operator*() {
-            if (status == Status::End) throw logic_error("FileReader initialization failed or cursor is at EOF!");
+            if (status == Status::End) throw out_of_range("FileReader initialization failed or cursor is at EOF!");
             return buffer[bufPos];
         }
 
@@ -104,6 +107,20 @@ namespace NBT::IO {
             return 0;
         }
 
+        [[nodiscard]] bool close() noexcept {
+            status = Status::End;
+            if (zstdStream != nullptr) {
+                ZSTD_freeDStream(zstdStream);
+                zstdStream = nullptr;
+            }
+            if (file != nullptr) {
+                if(!PHYSFS_close(file)) return false;
+                //It's intended behavior to leave `file` unnulled so we can try to close it again in the destructor.
+                file = nullptr;
+            }
+            return true;
+        }
+
         ~FileReader() {
             if (zstdStream != nullptr) ZSTD_freeDStream(zstdStream);
             if (file != nullptr) PHYSFS_close(file);
@@ -112,8 +129,7 @@ namespace NBT::IO {
     private:
         PHYSFS_File* file{ nullptr };
         u64 bufPos{ 0 }, bufSize{ 0 };
-        vector<u8> buffer;
-        vector<u8> inBuffer;
+        vector<u8> buffer, inBuffer;
         ZSTD_DStream* zstdStream{ nullptr };
         ZSTD_inBuffer src{ nullptr, 0, 0 };
         enum struct Status : u8 {
@@ -147,33 +163,5 @@ namespace NBT::IO {
                 default: break;
             }
         }
-    };
-
-    struct FileWriter {
-        [[nodiscard]] explicit FileWriter(const char* path, u8 bufferMag = 10) noexcept : file(PHYSFS_openWrite(path)) { if (file && PHYSFS_setBuffer(file, 1ull << bufferMag)) active = true; }
-
-        [[nodiscard]] FileWriter(const FileWriter&) = delete;
-        [[nodiscard]] FileWriter& operator=(const FileWriter&) = delete;
-        [[nodiscard]] FileWriter(FileWriter&& _move) noexcept : file(_move.file) { _move.file = nullptr; }
-        [[nodiscard]] FileWriter& operator=(FileWriter&& _move) noexcept {
-            swap(file, _move.file);
-            return *this;
-        }
-
-        ~FileWriter() { if (file != nullptr) PHYSFS_close(file); }
-
-        [[nodiscard]] explicit operator bool() const noexcept { return active; }
-
-        bool write(span<u8> data) noexcept {
-            auto wrote = PHYSFS_writeBytes(file, data.data(), data.size());
-            if (wrote != data.size()) {
-                //todo: failure
-            }
-            return true;
-        }
-
-    private:
-        PHYSFS_File* file{ nullptr };
-        bool active{ false };
     };
 }

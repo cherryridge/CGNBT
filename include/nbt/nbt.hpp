@@ -1,18 +1,19 @@
 ﻿#pragma once 
 
 #include "read.hpp" // IWYU pragma: export
+#include "readRaw.hpp" //IWYU pragma: export
 #include "write.hpp"  // IWYU pragma: export
 #include "serialize.hpp"  // IWYU pragma: export
+#include "error.hpp" // IWYU pragma: export
 
 namespace NBT {
     //IO APIs
-    using NBT::IO::read, NBT::IO::write, NBT::IO::serialize, NBT::IO::getFileInfo, NBT::IO::getErrors;
+    using NBT::IO::read, NBT::IO::readRawData, NBT::IO::write, NBT::IO::writeRawData, NBT::IO::serialize, NBT::IO::getFileInfo, NBT::Error::getErrors;
 
-    //Data Structures
-    using NBT::IO::NBTFileInfo;
+    using NBT::IO::NBTFileInfo, NBT::IO::RawDataStatus;
 
     //Tags
-    using NBT::TypeNS::Tag;
-    using NBT::TypeNS::TagObject, NBT::TypeNS::TagIVarInt, NBT::TypeNS::TagUVarInt, NBT::TypeNS::TagBool, NBT::TypeNS::TagHex, NBT::TypeNS::TagFloat, NBT::TypeNS::TagDouble, NBT::TypeNS::TagArray, NBT::TypeNS::TagString, NBT::TypeNS::TagRaw;
-    using NBT::TypeNS::TagArrayBool, NBT::TypeNS::TagArrayHex, NBT::TypeNS::TagArrayFloat, NBT::TypeNS::TagArrayDouble, NBT::TypeNS::TagArrayRaw;
+    using NBT::Type::Tag;
+    using NBT::Type::TagObject, NBT::Type::TagIVarInt, NBT::Type::TagUVarInt, NBT::Type::TagBool, NBT::Type::TagHex, NBT::Type::TagFloat, NBT::Type::TagDouble, NBT::Type::TagArray, NBT::Type::TagString, NBT::Type::TagRaw;
+    using NBT::Type::TagArrayBool, NBT::Type::TagArrayHex, NBT::Type::TagArrayFloat, NBT::Type::TagArrayDouble, NBT::Type::TagArrayRaw;
 }

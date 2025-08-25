@@ -2,19 +2,22 @@
 #include <array>
 #include <format>
 #include <string>
-#include <variant>
 #include <vector>
+#include <boost/unordered_map.hpp>
+#include <physfs.h>
 
 #include "type.hpp"
-#include "iotype.hpp"
+#include "FileReader.hpp"
+#include "auxiliary.hpp"
+#include "error.hpp"
 
 namespace NBT::IO {
     typedef char8_t c8;
     typedef uint8_t u8;
     typedef uint32_t u32;
     typedef uint64_t u64;
-    using namespace NBT::TypeNS;
-    using std::vector, std::array, std::string, std::variant, std::bit_cast, std::to_string, std::format, NBT::VarTextNS::readStr, NBT::VarIntNS::readUInt, NBT::TypeNS::SupportedContainers;
+    using namespace NBT::Type;
+    using std::vector, std::array, std::span, std::string, std::move, std::bit_cast, std::to_string, std::format, boost::unordered_flat_map, NBT::Aux::readVarText, NBT::Aux::readIVarInt, NBT::Aux::readUVarInt, NBT::Error::clearErrors, NBT::Error::pushError;
 
     [[nodiscard]] inline bool readObject     (FileReader&, TagObject&     , bool topLevel = false) noexcept;
                   inline void readIVarInt    (FileReader&, TagIVarInt&    )                        noexcept;
@@ -37,34 +40,32 @@ namespace NBT::IO {
         bool validFile{ false }, compressed{ false };
     };
 
-    inline thread_local vector<string> errors;
-
-    //Error vector copied on-purpose.
-    [[nodiscard]] inline vector<string> getErrors() noexcept { return vector(errors); }
-
-    template<SupportedContainers T>
-    [[nodiscard]] inline bool read(const char* path, T& result) noexcept {
-        errors.clear();
+    [[nodiscard]] inline bool read(const char* path, unordered_flat_map<string, Tag>& result) noexcept {
+        clearErrors();
         FileReader cursor(path);
         if (!cursor) {
-            errors.push_back(string("File failed to open: ") + path);
+            pushError(string("File failed to open: ") + path);
             return false;
         }
         //Caveat: We can actually treat the top level tags as they are in a embedded `Object` tag.
-        TagObject topLevel(12914);
+        TagObject topLevel;
         if (readObject(cursor, topLevel, true)) {
-            result = topLevel.payload;
+            result = move(topLevel.payload);
+            if (!cursor.close()) pushError(format("Failed to close file: {}!", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())));
             return true;
         }
-        else return false;
+        else if (!cursor.close()) pushError(format("Failed to close file: {}!", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())));
+        return false;
     }
 
     [[nodiscard]] inline NBTFileInfo getFileInfo(const char* path) noexcept {
+        clearErrors();
         NBTFileInfo result;
         FileReader cursor(path);
         result.validFile = !!cursor;
         result.compressed = cursor.compressed();
         result.fileSize = cursor.getFileSize();
+        if (!cursor.close()) pushError(format("Failed to close file: {}!", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())));
         return result;
     }
 
@@ -74,24 +75,24 @@ namespace NBT::IO {
             switch (type) {
                 case Types::Object: {
                     ++cursor;
-                    TagObject temp(12914);
-                    string name = readStr(cursor);
+                    TagObject temp;
+                    string name = readVarText(cursor);
                     if (readObject(cursor, temp)) result.payload.emplace(name, move(temp));
                     else return false;
                     break;
                 }
                 case Types::IVarInt: {
                     ++cursor;
-                    TagIVarInt temp(12914);
-                    string name = readStr(cursor);
+                    TagIVarInt temp;
+                    string name = readVarText(cursor);
                     readIVarInt(cursor, temp);
                     result.payload.emplace(name, move(temp));
                     break;
                 }
                 case Types::UVarInt: {
                     ++cursor;
-                    TagUVarInt temp(12914);
-                    string name = readStr(cursor);
+                    TagUVarInt temp;
+                    string name = readVarText(cursor);
                     readUVarInt(cursor, temp);
                     result.payload.emplace(name, move(temp));
                     break;
@@ -99,8 +100,8 @@ namespace NBT::IO {
                 case Types::Bool: {
                     auto cv = *cursor;
                     ++cursor;
-                    TagBool temp(12914);
-                    string name = readStr(cursor);
+                    TagBool temp;
+                    string name = readVarText(cursor);
                     readBool(cursor, temp, cv);
                     result.payload.emplace(name, move(temp));
                     break;
@@ -108,24 +109,24 @@ namespace NBT::IO {
                 case Types::Hex: {
                     auto cv = *cursor;
                     ++cursor;
-                    TagHex temp(12914);
-                    string name = readStr(cursor);
+                    TagHex temp;
+                    string name = readVarText(cursor);
                     readHex(cursor, temp, cv);
                     result.payload.emplace(name, move(temp));
                     break;
                 }
                 case Types::Float: {
                     ++cursor;
-                    TagFloat temp(12914);
-                    string name = readStr(cursor);
+                    TagFloat temp;
+                    string name = readVarText(cursor);
                     readFloat(cursor, temp);
                     result.payload.emplace(name, move(temp));
                     break;
                 }
                 case Types::Double: {
                     ++cursor;
-                    TagDouble temp(12914);
-                    string name = readStr(cursor);
+                    TagDouble temp;
+                    string name = readVarText(cursor);
                     readDouble(cursor, temp);
                     result.payload.emplace(name, move(temp));
                     break;
@@ -133,70 +134,70 @@ namespace NBT::IO {
                 case Types::Array: {
                     auto secType = getSecondType(*cursor);
                     ++cursor;
-                    TagArray temp(12914);
-                    string name = readStr(cursor);
+                    TagArray temp;
+                    string name = readVarText(cursor);
                     if (readArray(cursor, temp, secType)) result.payload.emplace(name, move(temp));
                     else return false;
                     break;
                 }
                 case Types::String: {
                     ++cursor;
-                    TagString temp(12914);
-                    string name = readStr(cursor);
+                    TagString temp;
+                    string name = readVarText(cursor);
                     if (readString(cursor, temp)) result.payload.emplace(name, move(temp));
                     else return false;
                     break;
                 }
                 case Types::Raw: {
                     ++cursor;
-                    TagRaw temp(12914);
-                    string name = readStr(cursor);
+                    TagRaw temp;
+                    string name = readVarText(cursor);
                     readRaw(cursor, temp);
                     result.payload.emplace(name, move(temp));
                     break;
                 }
                 case Types::ArrayBool: {
                     ++cursor;
-                    TagArrayBool temp(12914);
-                    string name = readStr(cursor);
+                    TagArrayBool temp;
+                    string name = readVarText(cursor);
                     if (readArrayBool(cursor, temp)) result.payload.emplace(name, move(temp));
                     else return false;
                     break;
                 }
                 case Types::ArrayHex: {
                     ++cursor;
-                    TagArrayHex temp(12914);
-                    string name = readStr(cursor);
+                    TagArrayHex temp;
+                    string name = readVarText(cursor);
                     if (readArrayHex(cursor, temp)) result.payload.emplace(name, move(temp));
                     else return false;
                     break;
                 }
                 case Types::ArrayFloat: {
                     ++cursor;
-                    TagArrayFloat temp(12914);
-                    string name = readStr(cursor);
+                    TagArrayFloat temp;
+                    string name = readVarText(cursor);
                     if (readArrayFloat(cursor, temp)) result.payload.emplace(name, move(temp));
                     else return false;
                     break;
                 }
                 case Types::ArrayDouble: {
                     ++cursor;
-                    TagArrayDouble temp(12914);
-                    string name = readStr(cursor);
+                    TagArrayDouble temp;
+                    string name = readVarText(cursor);
                     if (readArrayDouble(cursor, temp)) result.payload.emplace(name, move(temp));
                     else return false;
                     break;
                 }
                 case Types::ArrayRaw: {
                     ++cursor;
-                    TagArrayRaw temp(12914);
-                    string name = readStr(cursor);
+                    TagArrayRaw temp;
+                    string name = readVarText(cursor);
                     if (readArrayRaw(cursor, temp)) result.payload.emplace(name, move(temp));
                     else return false;
                     break;
                 }
                 default: {
-                    errors.push_back(format("Invalid type ID {} in object at pos {}", static_cast<u8>(type), cursor.currentOffset()));
+                    pushError(format("Invalid type ID {} in object at pos {}!", static_cast<u8>(type), cursor.currentOffset()));
                     return false;
                 }
             }
@@ -207,9 +208,9 @@ namespace NBT::IO {
         return true;
     }
 
-    inline void readIVarInt(FileReader& cursor, TagIVarInt& result) noexcept { result.payload = VarIntNS::readIVarInt(cursor); }
+    inline void readIVarInt(FileReader& cursor, TagIVarInt& result) noexcept { result.payload = readIVarInt(cursor); }
 
-    inline void readUVarInt(FileReader& cursor, TagUVarInt& result) noexcept { result.payload = VarIntNS::readUVarInt(cursor); }
+    inline void readUVarInt(FileReader& cursor, TagUVarInt& result) noexcept { result.payload = readUVarInt(cursor); }
 
     inline void readBool(FileReader& cursor, TagBool& result, u8 cv) noexcept { result.payload = cv & 0x01; }
 
@@ -236,55 +237,127 @@ namespace NBT::IO {
     }
 
     [[nodiscard]] inline bool readArray(FileReader& cursor, TagArray& result, const Types type) noexcept {
-        auto count = readUInt(cursor);
+        auto count = readUVarInt(cursor);
         result.payload.resize(count);
         switch (type) {
             case Types::Object: {
                 for (u64 i = 0; i < count; i++) {
-                    if (readObject(cursor, result.payload[i].tagObject)) result.payload[i].type = Types::Object;
-                    else return false;
+                    new (&result.payload[i].tagObject) TagObject;
+                    result.payload[i].type = Types::Object;
+                    if (!readObject(cursor, result.payload[i].tagObject)) return false;
                 }
                 break;
             }
             case Types::IVarInt: {
                 for (u64 i = 0; i < count; i++) {
-                    readIVarInt(cursor, result.payload[i].tagIVarInt);
+                    new (&result.payload[i].tagIVarInt) TagIVarInt;
                     result.payload[i].type = Types::IVarInt;
+                    readIVarInt(cursor, result.payload[i].tagIVarInt);
                 }
                 break;
             }
             case Types::UVarInt: {
                 for (u64 i = 0; i < count; i++) {
-                    readUVarInt(cursor, result.payload[i].tagUVarInt);
+                    new (&result.payload[i].tagUVarInt) TagUVarInt;
                     result.payload[i].type = Types::UVarInt;
+                    readUVarInt(cursor, result.payload[i].tagUVarInt);
                 }
                 break;
             }
             case Types::Array: {
+                auto type = getSecondType(*cursor);
+                switch (type) {
+                    case Types::Object:
+                    case Types::IVarInt:
+                    case Types::UVarInt:
+                    case Types::Array:
+                    case Types::String: {
+                        for (u64 i = 0; i < count; i++) {
+                            new (&result.payload[i].tagArray) TagArray;
+                            result.payload[i].type = Types::Array;
+                            //Pass head block of each array.
+                            ++cursor;
+                            if (!readArray(cursor, result.payload[i].tagArray, type)) return false;
+                        }
+                        break;
+                    }
+                    case Types::Bool: {
+                        for(u64 i = 0; i < count; i++) {
+                            new (&result.payload[i].tagArrayBool) TagArrayBool;
+                            result.payload[i].type = Types::ArrayBool;
+                            //Pass head block of each array.
+                            ++cursor;
+                            if (!readArrayBool(cursor, result.payload[i].tagArrayBool)) return false;
+                        }
+                        break;
+                    }
+                    case Types::Hex: {
+                        for (u64 i = 0; i < count; i++) {
+                            new (&result.payload[i].tagArrayHex) TagArrayHex;
+                            result.payload[i].type = Types::ArrayHex;
+                            //Pass head block of each array.
+                            ++cursor;
+                            if (!readArrayHex(cursor, result.payload[i].tagArrayHex)) return false;
+                        }
+                        break;
+                    }
+                    case Types::Float: {
+                        for (u64 i = 0; i < count; i++) {
+                            new (&result.payload[i].tagArrayFloat) TagArrayFloat;
+                            result.payload[i].type = Types::ArrayFloat;
+                            //Pass head block of each array.
+                            ++cursor;
+                            if (!readArrayFloat(cursor, result.payload[i].tagArrayFloat)) return false;
+                        }
+                        break;
+                    }
+                    case Types::Double: {
+                        for (u64 i = 0; i < count; i++) {
+                            new (&result.payload[i].tagArrayDouble) TagArrayDouble;
+                            result.payload[i].type = Types::ArrayDouble;
+                            //Pass head block of each array.
+                            ++cursor;
+                            if (!readArrayDouble(cursor, result.payload[i].tagArrayDouble)) return false;
+                        }
+                        break;
+                    }
+                    case Types::Raw: {
+                        for (u64 i = 0; i < count; i++) {
+                            new (&result.payload[i].tagArrayRaw) TagArrayRaw;
+                            result.payload[i].type = Types::ArrayRaw;
+                            //Pass head block of each array.
+                            ++cursor;
+                            if (!readArrayRaw(cursor, result.payload[i].tagArrayRaw)) return false;
+                        }
+                        break;
+                    }
+                }
+                break;
+            }
+            case Types::String: {
                 for (u64 i = 0; i < count; i++) {
-                    auto type = getSecondType(*cursor);
-                    ++cursor;
-                    if (readArray(cursor, result.payload[i].tagArray, type)) result.payload[i].type = Types::Array;
-                    else return false;
+                    new (&result.payload[i].tagString) TagString;
+                    result.payload[i].type = Types::String;
+                    if (!readString(cursor, result.payload[i].tagString)) return false;
                 }
                 break;
             }
             default: { //ObjectEnd, etc.
-                errors.push_back(format("Invalid second type {} at pos {}", static_cast<u8>(type), cursor.currentOffset() - 1));
+                pushError(format("Invalid second type {} at pos {}!", static_cast<u8>(type), cursor.currentOffset() - 1));
                 return false;
             }
         }
         return true;
     }
 
-    inline constexpr const char* EOF_ERROR = "Failed to read string, EOF reached!";
+    inline constexpr const char* EOF_ERROR = "Failed to read data, EOF reached!";
 
     [[nodiscard]] inline bool readString(FileReader& cursor, TagString& result) noexcept {
-        auto byteLength = readUInt(cursor);
+        auto byteLength = readUVarInt(cursor);
         vector<c8> temp(byteLength);
         u64 actualByteLength = cursor.getContent(reinterpret_cast<u8*>(temp.data()), byteLength);
         if (actualByteLength < byteLength) {
-            errors.push_back(EOF_ERROR);
+            pushError(EOF_ERROR);
             return false;
         }
         result.payload = u8string(temp.begin(), temp.end());
@@ -297,11 +370,11 @@ namespace NBT::IO {
     }
 
     [[nodiscard]] inline bool readArrayBool(FileReader& cursor, TagArrayBool& result) noexcept {
-        auto count = readUInt(cursor);
+        auto count = readUVarInt(cursor);
         result.payload.resize(count);
         u64 actualLength = cursor.getContent(result.payload.data(), count);
         if (actualLength < count) {
-            errors.push_back(EOF_ERROR);
+            pushError(EOF_ERROR);
             return false;
         }
         //Modern compilers will auto vectorize this.
@@ -310,11 +383,11 @@ namespace NBT::IO {
     }
 
     [[nodiscard]] inline bool readArrayHex(FileReader& cursor, TagArrayHex& result) noexcept {
-        auto count = readUInt(cursor);
+        auto count = readUVarInt(cursor);
         result.payload.resize(count);
         u64 actualLength = cursor.getContent(result.payload.data(), count);
         if (actualLength < count) {
-            errors.push_back(EOF_ERROR);
+            pushError(EOF_ERROR);
             return false;
         }
         //Modern compilers will auto vectorize this.
@@ -323,33 +396,33 @@ namespace NBT::IO {
     }
 
     [[nodiscard]] inline bool readArrayFloat(FileReader& cursor, TagArrayFloat& result) noexcept {
-        auto count = readUInt(cursor);
+        auto count = readUVarInt(cursor);
         result.payload.resize(count);
         u64 actualLength = cursor.getContent(reinterpret_cast<u8*>(result.payload.data()), count * 4);
         if (actualLength < count * 4) {
-            errors.push_back(EOF_ERROR);
+            pushError(EOF_ERROR);
             return false;
         }
         return true;
     }
 
     [[nodiscard]] inline bool readArrayDouble(FileReader& cursor, TagArrayDouble& result) noexcept {
-        auto count = readUInt(cursor);
+        auto count = readUVarInt(cursor);
         result.payload.resize(count);
         u64 actualLength = cursor.getContent(reinterpret_cast<u8*>(result.payload.data()), count * 8);
         if (actualLength < count * 8) {
-            errors.push_back(EOF_ERROR);
+            pushError(EOF_ERROR);
             return false;
         }
         return true;
     }
 
     [[nodiscard]] inline bool readArrayRaw(FileReader& cursor, TagArrayRaw& result) noexcept {
-        auto count = readUInt(cursor);
+        auto count = readUVarInt(cursor);
         result.payload.resize(count);
         u64 actualLength = cursor.getContent(result.payload.data(), count);
         if (actualLength < count) {
-            errors.push_back(EOF_ERROR);
+            pushError(EOF_ERROR);
             return false;
         }
         return true;

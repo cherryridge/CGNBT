@@ -4,22 +4,33 @@
 #include <limits>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <vector>
 #include <boost/unordered/unordered_flat_map.hpp>
 
-#include "VarText.hpp"
-#include "VarInt.hpp"
+#include "auxiliary.hpp"
 #include "utils.hpp"
 
-namespace NBT::TypeNS {
+namespace NBT::Type {
+    typedef int8_t i8;
     typedef uint8_t u8;
     typedef char8_t c8;
+    typedef int16_t i16;
+    typedef uint16_t u16;
+    typedef int32_t i32;
+    typedef uint32_t u32;
+    typedef int64_t i64;
     typedef uint64_t u64;
-    using std::vector, std::array, std::string, std::u8string, std::numeric_limits, std::to_string, std::format, std::move, std::forward, std::unordered_map, std::span, std::enable_if_t, std::decay_t, std::is_same_v, boost::unordered_flat_map, VarTextNS::VarText, VarIntNS::UVarInt, VarIntNS::IVarInt, Utils::hexToString;
+    using std::vector, std::array, std::string, std::u8string, std::numeric_limits, std::to_string, std::format, std::move, std::forward, std::enable_if_t, std::decay_t, std::is_same_v, boost::unordered_flat_map, Utils::hexToString;
 
     template<typename T, typename U>
     using equal = enable_if_t<is_same_v<decay_t<T>, U>>;
+
+    template<typename T>
+    concept Uint = is_same_v<T, u8> || is_same_v<T, u16> || is_same_v<T, u32> || is_same_v<T, u64>;
+    template<typename T>
+    concept Sint = is_same_v<T, i8> || is_same_v<T, i16> || is_same_v<T, i32> || is_same_v<T, i64>;
+    template<typename T>
+    concept Int = Sint<T> || Uint<T>;
 
     enum struct Types : u8 {
         ObjectEnd = 0, Object, IVarInt, UVarInt, Bool, Hex, Float, Double, Array, String, Raw,
@@ -41,48 +52,45 @@ namespace NBT::TypeNS {
 
     [[nodiscard]] inline constexpr Types getSecondType(u8 head) noexcept { return static_cast<Types>(head & 0x0F); }
 
+    [[nodiscard]] inline constexpr Types getOriginalType(Types type) noexcept {
+        switch (type) {
+            case Types::ArrayBool:
+            case Types::ArrayHex:
+            case Types::ArrayFloat:
+            case Types::ArrayDouble:
+            case Types::ArrayRaw:
+                return Types::Array;
+            default:
+                return type;
+        }
+    }
+
     struct Tag;
 
     struct TagObject {
         unordered_flat_map<string, Tag> payload;
 
+        [[nodiscard]] TagObject() noexcept = default;
         template<typename T, typename = equal<T, unordered_flat_map<string, Tag>>>
         [[nodiscard]] TagObject(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagObject(int) noexcept {}
 
         [[nodiscard]] string toString() const noexcept;
     };
 
     struct TagIVarInt {
-        IVarInt payload;
+        i64 payload;
 
-        template<typename T, typename = equal<T, IVarInt>>
-        [[nodiscard]] TagIVarInt(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagIVarInt(int) noexcept : payload(true) {}
-
-        [[nodiscard]] string toString() const noexcept { return to_string(payload.get()); }
+        [[nodiscard]] string toString() const noexcept { return to_string(payload); }
     };
 
     struct TagUVarInt {
-        UVarInt payload;
+        u64 payload;
 
-        template<typename T, typename = equal<T, UVarInt>>
-        [[nodiscard]] TagUVarInt(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagUVarInt(int) noexcept : payload(true) {}
-
-        [[nodiscard]] string toString() const noexcept { return to_string(payload.get()) + "u"; }
+        [[nodiscard]] string toString() const noexcept { return to_string(payload) + "u"; }
     };
 
     struct TagBool {
         bool payload;
-
-        template<typename T, typename = equal<T, bool>>
-        [[nodiscard]] TagBool(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagBool(int) noexcept {}
 
         [[nodiscard]] string toString() const noexcept { return payload ? "true" : "false"; }
     };
@@ -90,34 +98,19 @@ namespace NBT::TypeNS {
     struct TagHex {
         u8 payload;
 
-        template<typename T, typename = equal<T, u8>>
-        [[nodiscard]] TagHex(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagHex(int) noexcept {}
-
         [[nodiscard]] string toString() const noexcept { return hexToString(payload); }
     };
 
     struct TagFloat {
         float payload;
 
-        template<typename T, typename = equal<T, float>>
-        [[nodiscard]] TagFloat(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagFloat(int) noexcept {}
-
-        [[nodiscard]] string toString() const noexcept { return format("{:.{}g}", payload, std::numeric_limits<float>::max_digits10); }
+        [[nodiscard]] string toString() const noexcept { return format("{:.{}g}", payload, numeric_limits<float>::max_digits10); }
     };
 
     struct TagDouble {
         double payload;
 
-        template<typename T, typename = equal<T, double>>
-        [[nodiscard]] TagDouble(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagDouble(int) noexcept {}
-
-        [[nodiscard]] string toString() const noexcept { return format("{:.{}g}", payload, std::numeric_limits<double>::max_digits10); }
+        [[nodiscard]] string toString() const noexcept { return format("{:.{}g}", payload, numeric_limits<double>::max_digits10); }
     };
 
     //This struct is used for arrays of `Object`s, `IVarInt`s, `UVarInt`s, `Array`s and `String`s.
@@ -127,11 +120,9 @@ namespace NBT::TypeNS {
         //`type` is also encoded into the entries of vector. In fact it's not possible to not store them into union structs because we need a proper destructor.
         vector<Tag> payload;
 
+        [[nodiscard]] TagArray() noexcept = default;
         template<typename T, typename = equal<T, vector<Tag>>>
         [[nodiscard]] TagArray(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        //The implementation is moved to the end of the file to prevent circular dependency.
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagArray(int) noexcept;
 
         [[nodiscard]] string toString() const noexcept;
     };
@@ -139,21 +130,17 @@ namespace NBT::TypeNS {
     struct TagString {
         u8string payload;
 
+        [[nodiscard]] TagString() noexcept = default;
+        [[nodiscard]] TagString(const char* constStr) noexcept : payload(reinterpret_cast<const c8*>(constStr)) {}
+        [[nodiscard]] TagString(const string& str) noexcept : payload(reinterpret_cast<const c8*>(str.c_str()), str.size()) {}
         template<typename T, typename = equal<T, u8string>>
         [[nodiscard]] TagString(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagString(int) noexcept {}
 
         [[nodiscard]] string toString() const noexcept { return "\"" + string(reinterpret_cast<const char*>(payload.c_str())) + "\""; }
     };
 
     struct TagRaw {
         u8 payload;
-
-        template<typename T, typename = equal<T, u8>>
-        [[nodiscard]] TagRaw(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagRaw(int) noexcept {}
 
         [[nodiscard]] string toString() const noexcept { return string(hexToString(payload >> 4)) + hexToString(payload & 0x0F); }
     };
@@ -164,10 +151,9 @@ namespace NBT::TypeNS {
         //`count` is encoded into the vector.
         vector<u8> payload;
 
+        [[nodiscard]] TagArrayBool() noexcept = default;
         template<typename T, typename = equal<T, vector<u8>>>
         [[nodiscard]] TagArrayBool(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagArrayBool(int) noexcept {}
 
         [[nodiscard]] string toString() const noexcept {
             string result("[");
@@ -186,10 +172,9 @@ namespace NBT::TypeNS {
         //`count` is encoded into the vector.
         vector<u8> payload;
 
+        [[nodiscard]] TagArrayHex() noexcept = default;
         template<typename T, typename = equal<T, vector<u8>>>
         [[nodiscard]] TagArrayHex(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagArrayHex(int) noexcept {}
 
         [[nodiscard]] string toString() const noexcept {
             string result("[");
@@ -208,10 +193,9 @@ namespace NBT::TypeNS {
         //`count` is encoded into the vector.
         vector<float> payload;
 
+        [[nodiscard]] TagArrayFloat() noexcept = default;
         template<typename T, typename = equal<T, vector<float>>>
         [[nodiscard]] TagArrayFloat(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagArrayFloat(int) noexcept {}
 
         [[nodiscard]] string toString() const noexcept {
             string result("[");
@@ -219,7 +203,7 @@ namespace NBT::TypeNS {
             for (const auto& value : payload) {
                 if (first) first = false;
                 else result += ", ";
-                result += format("{:.{}g}", value, std::numeric_limits<float>::max_digits10);
+                result += format("{:.{}g}", value, numeric_limits<float>::max_digits10);
             }
             result += "]";
             return result;
@@ -230,10 +214,9 @@ namespace NBT::TypeNS {
         //`count` is encoded into the vector.
         vector<double> payload;
 
+        [[nodiscard]] TagArrayDouble() noexcept = default;
         template<typename T, typename = equal<T, vector<double>>>
         [[nodiscard]] TagArrayDouble(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagArrayDouble(int) noexcept {}
 
         [[nodiscard]] string toString() const noexcept {
             string result("[");
@@ -241,7 +224,7 @@ namespace NBT::TypeNS {
             for (const auto& value : payload) {
                 if (first) first = false;
                 else result += ", ";
-                result += format("{:.{}g}", value, std::numeric_limits<double>::max_digits10);
+                result += format("{:.{}g}", value, numeric_limits<double>::max_digits10);
             }
             result += "]";
             return result;
@@ -252,10 +235,9 @@ namespace NBT::TypeNS {
         //`count` is encoded into the vector.
         vector<u8> payload;
 
+        [[nodiscard]] TagArrayRaw() noexcept = default;
         template<typename T, typename = equal<T, vector<u8>>>
         [[nodiscard]] TagArrayRaw(T&& payload) noexcept : payload(forward<T>(payload)) {}
-        #pragma warning(suppress: 26495)
-        [[nodiscard]] TagArrayRaw(int) noexcept {}
 
         [[nodiscard]] string toString() const noexcept {
             string result("[");
@@ -513,8 +495,6 @@ namespace NBT::TypeNS {
         return result;
     }
 
-    [[nodiscard]] inline TagArray::TagArray(int) noexcept {}
-
     [[nodiscard]] inline string TagArray::toString() const noexcept {
         string result("[");
         bool first = true;
@@ -526,7 +506,4 @@ namespace NBT::TypeNS {
         result += "]";
         return result;
     }
-
-    template<typename T>
-    concept SupportedContainers = is_same_v<decay_t<T>, boost::unordered_flat_map<string, Tag>> || is_same_v<decay_t<T>, unordered_map<string, Tag>>;
 }
