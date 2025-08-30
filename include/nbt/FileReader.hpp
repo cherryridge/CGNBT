@@ -24,23 +24,31 @@ namespace NBT::IO {
 
     struct FileReader {
         [[nodiscard]] explicit FileReader(const char* path) noexcept : file(PHYSFS_openRead(path)) {
-            if (file && PHYSFS_fileLength(file) > 5) {
-                array<u8, 5> header{ 0 };
-                PHYSFS_readBytes(file, header.data(), 5);
-                PHYSFS_seek(file, 0);
-                buffer.resize(BUFFER_SIZE);
-                if (header[0] == 'c' && header[1] == 'G' && header[2] == 'n' && header[3] == 'b' && header[4] == 'T') {
-                    status = Status::Plain;
-                    PHYSFS_seek(file, 5);
-                    fetchBlock();
+            if (file) {
+                if (PHYSFS_fileLength(file) > 5) {
+                    array<u8, 5> header{ 0 };
+                    PHYSFS_readBytes(file, header.data(), 5);
+                    PHYSFS_seek(file, 0);
+                    buffer.resize(BUFFER_SIZE);
+                    if (header[0] == 'c' && header[1] == 'G' && header[2] == 'n' && header[3] == 'b' && header[4] == 'T') {
+                        status = Status::Plain;
+                        PHYSFS_seek(file, 5);
+                        fetchBlock();
+                    }
+                    else if (ZSTD_isFrame(header.data(), 4) || ZSTD_isSkippableFrame(header.data(), 4)) {
+                        status = Status::Zstd;
+                        zstdStream = ZSTD_createDStream();
+                        ZSTD_initDStream(zstdStream);
+                        inBuffer.resize(ZSTD_DStreamInSize());
+                        src = { inBuffer.data(), 0, 0 };
+                        fetchBlock(true);
+                    }
                 }
-                else if (ZSTD_isFrame(header.data(), 4) || ZSTD_isSkippableFrame(header.data(), 4)) {
-                    status = Status::Zstd;
-                    zstdStream = ZSTD_createDStream();
-                    ZSTD_initDStream(zstdStream);
-                    inBuffer.resize(ZSTD_DStreamInSize());
-                    src = { inBuffer.data(), 0, 0 };
-                    fetchBlock();
+                else if (PHYSFS_fileLength(file) == 5) {
+                    array<u8, 5> header{ 0 };
+                    PHYSFS_readBytes(file, header.data(), 5);
+                    PHYSFS_seek(file, 0);
+                    if (header[0] == 'c' && header[1] == 'G' && header[2] == 'n' && header[3] == 'b' && header[4] == 'T') status = Status::Empty;
                 }
                 else pushError(format("File {} is not a valid CGNBT file!", path));
             }
@@ -54,6 +62,7 @@ namespace NBT::IO {
 
         [[nodiscard]] explicit operator bool() const noexcept { return status != Status::End; }
         [[nodiscard]] bool eof() const noexcept { return status == Status::End; }
+        [[nodiscard]] bool empty() const noexcept { return status == Status::Empty; }
 
         [[nodiscard]] u8 operator*() {
             if (status == Status::End) throw out_of_range("FileReader initialization failed or cursor is at EOF!");
@@ -133,10 +142,11 @@ namespace NBT::IO {
         ZSTD_DStream* zstdStream{ nullptr };
         ZSTD_inBuffer src{ nullptr, 0, 0 };
         enum struct Status : u8 {
-            Plain, Zstd, End
+            Plain, Zstd, End, Empty
         } status{ Status::End };
 
-        void fetchBlock() noexcept {
+        //`isFirstFetch` is only used in Zstd mode currently.
+        void fetchBlock(bool isFirstFetch = false) noexcept {
             bufPos = 0;
             bufSize = 0;
             switch (status) {
@@ -157,7 +167,10 @@ namespace NBT::IO {
                         if (ZSTD_isError(result) || (result == 0 && dst.pos == 0)) break;
                     }
                     bufSize = dst.pos;
-                    if (bufSize == 0) status = Status::End;
+                    if (bufSize == 0) {
+                        if (isFirstFetch) status = Status::Empty;
+                        else status = Status::End;
+                    }
                     break;
                 }
                 default: break;

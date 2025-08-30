@@ -47,6 +47,12 @@ namespace NBT::IO {
             pushError(string("File failed to open: ") + path);
             return false;
         }
+        if (cursor.empty()) {
+            //Empty file is valid, but contains no data.
+            result.clear();
+            if (!cursor.close()) pushError(format("Failed to close file: {}!", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())));
+            return true;
+        }
         //Caveat: We can actually treat the top level tags as they are in a embedded `Object` tag.
         TagObject topLevel;
         if (readObject(cursor, topLevel, true)) {

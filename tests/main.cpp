@@ -23,9 +23,9 @@ int main() {
     PHYSFS_mount("E:/", "/", 1);
     PHYSFS_setWriteDir("E:/");
 
-    cout << "========Reading NBT From File========" << endl;
 
 {
+    cout << "========Reading NBT From File========" << endl;
     unordered_flat_map<string, Tag> result;
     auto start = steady_clock::now();
     if (NBT::read("a.cgb", result)) {
@@ -42,9 +42,8 @@ int main() {
     }
 }
 
-    cout << "========Writing NBT to File========" << endl;
-
 {
+    cout << "========Writing NBT to File========" << endl;
     unordered_flat_map<string, Tag> writeTest;
     writeTest.emplace("uint1-1 :)", TagUVarInt(12914));
     writeTest.emplace("int-1~!@#$%^&*()`[];',./{}|:\"<>? ___super_____long__________________________________________________________________________________________________________________________________________________________________________________________________________________", TagIVarInt(180613137));
@@ -68,7 +67,7 @@ int main() {
     tempMap2.emplace("An array of doubles", TagArrayDouble(vector<double>({ 3.141592653589793, 2.718281828459045, 1.618033988749895, 0.577215664901532, 1.4142135623730951 })));
     tempMap2.emplace("You know what's coming :D", TagArrayFloat(vector<float>({ 3.1415927f, 2.7182818f, 1.6180339f, 0.5772157f, 1.4142136f })));
     tempMap3.emplace("I give up on naming these things", tempMap2);
-    tempMap3.emplace("coordinates", TagArrayDouble(vector<double>({321312.521, 5236.734, -539128124.46})));
+    tempMap3.emplace("coordinates", TagArrayDouble(vector<double>({ 321312.521, 5236.734, -539128124.46 })));
     tempMap3.emplace("raws", TagArray(vector<Tag>({
         TagArrayRaw(vector<u8>({ 'T', 'h', 'i', 's', ' ', 'i', 's', ' ', 'a', ' ', 't', 'e', 's', 't', '.' })),
         TagArrayRaw(vector<u8>({ 'c', 'G', 'n', 'b', 'T', '!' }))
@@ -92,7 +91,7 @@ int main() {
     tempMap.emplace("???", tempMap3);
     writeTest.emplace("the_most_thorough_embedding_test_ever", TagObject(tempMap));
 
-    cout << write("test.cgb", writeTest, true, false) << endl;
+    cout << write("test.cgb", writeTest, true, true) << endl;
 
     unordered_flat_map<string, Tag> result2;
     auto start = steady_clock::now();
@@ -101,6 +100,7 @@ int main() {
         cout << "Parse took " << duration_cast<microseconds>(end - start).count() << "us" << endl;
         auto str = NBT::serialize(result2);
         cout << str << endl;
+        cout << "========Test Completed========" << endl;
     }
     else {
         cout << "Parse failed! Errors:" << endl;
@@ -109,7 +109,34 @@ int main() {
     }
 }
 
+{
+    cout << "========Empty Files========" << endl;
+    unordered_flat_map<string, Tag> emptyTest1, result1;
+    cout << write("empty1.cgb", emptyTest1, true, true) << endl;
+    if (NBT::read("empty1.cgb", result1)) {
+        auto str = NBT::serialize(result1);
+        cout << str << endl;
+        cout << "========Test Completed========" << endl;
+    }
+    else {
+        cout << "Parse failed! Errors:" << endl;
+        auto errors = NBT::getErrors();
+        for (const auto& error : errors) cout << error << endl;
+    }
+
+    unordered_flat_map<string, Tag> emptyTest2, result2;
+    cout << write("empty2.cgb", emptyTest2, true, false) << endl;
+    if (NBT::read("empty2.cgb", result2)) {
+        auto str = NBT::serialize(result2);
+        cout << str << endl;
+    }
+    else {
+        cout << "Parse failed! Errors:" << endl;
+        auto errors = NBT::getErrors();
+        for (const auto& error : errors) cout << error << endl;
+    }
     cout << "========Test Completed========" << endl;
+}
 
     PHYSFS_deinit();
     return 0;
