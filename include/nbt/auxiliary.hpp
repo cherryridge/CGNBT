@@ -13,7 +13,7 @@ namespace NBT::Aux {
 
     inline static constexpr u8 MSB = 0x80;
 
-    inline string readVarText(FileReader& cursor) noexcept {
+    [[nodiscard]] inline string readVarText(FileReader& cursor) noexcept {
         vector<u8> buffer;
         while (!(*cursor & MSB)) {
             buffer.push_back(*cursor);
@@ -32,7 +32,7 @@ namespace NBT::Aux {
     }
 
     //Sets cursor to the start of the next byte.
-    inline u64 readUVarInt(FileReader& cursor) noexcept {
+    [[nodiscard]] inline u64 readUVarInt(FileReader& cursor) noexcept {
         u8 length = 1, buffer[10]{ 0 };
         buffer[0] = *cursor;
         while (!(*cursor & MSB)) {
@@ -47,7 +47,7 @@ namespace NBT::Aux {
     }
 
     //Sets cursor to the start of the next byte.
-    inline i64 readIVarInt(FileReader& cursor) noexcept {
+    [[nodiscard]] inline i64 readIVarInt(FileReader& cursor) noexcept {
         const auto _unsigned = readUVarInt(cursor);
         return (_unsigned >> 1) ^ -(_unsigned & 1);
     }

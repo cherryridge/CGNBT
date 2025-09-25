@@ -337,6 +337,10 @@ namespace NBT::IO {
                         }
                         break;
                     }
+                    default: {
+                        pushError(format("Invalid second type {} at pos {}!", static_cast<u8>(type), cursor.currentOffset() - 1));
+                        return false;
+                    }
                 }
                 break;
             }

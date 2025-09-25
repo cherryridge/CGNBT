@@ -7,7 +7,6 @@
 #include <vector>
 #include <boost/unordered/unordered_flat_map.hpp>
 
-#include "auxiliary.hpp"
 #include "utils.hpp"
 
 namespace NBT::Type {

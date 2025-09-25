@@ -12,5 +12,5 @@ namespace NBT::Error {
 
     inline void clearErrors() noexcept { errors.clear(); }
 
-    [[nodiscard]] inline void pushError(const string& error) noexcept { errors.push_back(error); }
+    inline void pushError(const string& error) noexcept { errors.push_back(error); }
 }

@@ -265,6 +265,7 @@ namespace NBT::IO {
                 return false;
             }
         }
+        return true;
     }
 
     inline void writeString(const TagString& data, vector<u8>& result) noexcept {
