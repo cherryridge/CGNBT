@@ -22,7 +22,7 @@ namespace NBT::Type {
     using std::vector, std::array, std::string, std::u8string, std::numeric_limits, std::to_string, std::format, std::move, std::forward, std::enable_if_t, std::decay_t, std::is_same_v, boost::unordered_flat_map, Utils::hexToString;
 
     template<typename T, typename U>
-    using equal = enable_if_t<is_same_v<decay_t<T>, U>>;
+    concept equal = is_same_v<decay_t<T>, U>;
 
     template<typename T>
     concept Uint = is_same_v<T, u8> || is_same_v<T, u16> || is_same_v<T, u32> || is_same_v<T, u64>;
@@ -70,7 +70,8 @@ namespace NBT::Type {
         unordered_flat_map<string, Tag> payload;
 
         [[nodiscard]] TagObject() noexcept = default;
-        template<typename T, typename = equal<T, unordered_flat_map<string, Tag>>>
+        template<typename T>
+        requires equal<T, unordered_flat_map<string, Tag>>
         [[nodiscard]] TagObject(T&& payload) noexcept : payload(forward<T>(payload)) {}
 
         [[nodiscard]] string toString() const noexcept;
@@ -120,7 +121,8 @@ namespace NBT::Type {
         vector<Tag> payload;
 
         [[nodiscard]] TagArray() noexcept = default;
-        template<typename T, typename = equal<T, vector<Tag>>>
+        template<typename T>
+        requires equal<T, vector<Tag>>
         [[nodiscard]] TagArray(T&& payload) noexcept : payload(forward<T>(payload)) {}
 
         [[nodiscard]] string toString() const noexcept;
@@ -132,7 +134,8 @@ namespace NBT::Type {
         [[nodiscard]] TagString() noexcept = default;
         [[nodiscard]] TagString(const char* constStr) noexcept : payload(reinterpret_cast<const c8*>(constStr)) {}
         [[nodiscard]] TagString(const string& str) noexcept : payload(reinterpret_cast<const c8*>(str.c_str()), str.size()) {}
-        template<typename T, typename = equal<T, u8string>>
+        template<typename T>
+        requires equal<T, u8string>
         [[nodiscard]] TagString(T&& payload) noexcept : payload(forward<T>(payload)) {}
 
         [[nodiscard]] string toString() const noexcept { return "\"" + string(reinterpret_cast<const char*>(payload.c_str())) + "\""; }
@@ -151,7 +154,8 @@ namespace NBT::Type {
         vector<u8> payload;
 
         [[nodiscard]] TagArrayBool() noexcept = default;
-        template<typename T, typename = equal<T, vector<u8>>>
+        template<typename T>
+        requires equal<T, vector<u8>>
         [[nodiscard]] TagArrayBool(T&& payload) noexcept : payload(forward<T>(payload)) {}
 
         [[nodiscard]] string toString() const noexcept {
@@ -172,7 +176,8 @@ namespace NBT::Type {
         vector<u8> payload;
 
         [[nodiscard]] TagArrayHex() noexcept = default;
-        template<typename T, typename = equal<T, vector<u8>>>
+        template<typename T>
+        requires equal<T, vector<u8>>
         [[nodiscard]] TagArrayHex(T&& payload) noexcept : payload(forward<T>(payload)) {}
 
         [[nodiscard]] string toString() const noexcept {
@@ -193,7 +198,8 @@ namespace NBT::Type {
         vector<float> payload;
 
         [[nodiscard]] TagArrayFloat() noexcept = default;
-        template<typename T, typename = equal<T, vector<float>>>
+        template<typename T>
+        requires equal<T, vector<float>>
         [[nodiscard]] TagArrayFloat(T&& payload) noexcept : payload(forward<T>(payload)) {}
 
         [[nodiscard]] string toString() const noexcept {
@@ -214,7 +220,8 @@ namespace NBT::Type {
         vector<double> payload;
 
         [[nodiscard]] TagArrayDouble() noexcept = default;
-        template<typename T, typename = equal<T, vector<double>>>
+        template<typename T>
+        requires equal<T, vector<double>>
         [[nodiscard]] TagArrayDouble(T&& payload) noexcept : payload(forward<T>(payload)) {}
 
         [[nodiscard]] string toString() const noexcept {
@@ -235,7 +242,8 @@ namespace NBT::Type {
         vector<u8> payload;
 
         [[nodiscard]] TagArrayRaw() noexcept = default;
-        template<typename T, typename = equal<T, vector<u8>>>
+        template<typename T>
+        requires equal<T, vector<u8>>
         [[nodiscard]] TagArrayRaw(T&& payload) noexcept : payload(forward<T>(payload)) {}
 
         [[nodiscard]] string toString() const noexcept {
