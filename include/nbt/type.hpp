@@ -451,7 +451,7 @@ namespace NBT::Type {
                 case Types::ArrayFloat:  return tagArrayFloat.toString();
                 case Types::ArrayDouble: return tagArrayDouble.toString();
                 case Types::ArrayRaw:    return tagArrayRaw.toString();
-                default: return "";
+                default: return "<invalid type>";
             }
         }
         
