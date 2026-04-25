@@ -15,10 +15,10 @@ set(CMAKE_SUPPRESS_REGENERATION ON CACHE BOOL "" FORCE)
 #----------------------------------
 
 #----------Before Tweaks-----------
-add_library(ScopedFlags INTERFACE)
+add_library(ScopedFlags_CGNBT INTERFACE)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
     message("Using MSVC / clang-cl")
-    target_compile_options(ScopedFlags INTERFACE
+    target_compile_options(ScopedFlags_CGNBT INTERFACE
         $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>
         $<$<COMPILE_LANGUAGE:CXX>:/Zc:preprocessor>
         $<$<COMPILE_LANGUAGE:CXX>:/bigobj>
@@ -156,7 +156,7 @@ target_include_directories(${PROJECT_NAME} INTERFACE
 )
 
 target_link_libraries(${PROJECT_NAME} INTERFACE
-    ScopedFlags
+    ScopedFlags_CGNBT
 
     physfs-static
     libzstd_static
