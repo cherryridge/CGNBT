@@ -1,4 +1,4 @@
-﻿#include <chrono>
+#include <chrono>
 #include <iostream>
 #include <vector>
 #include <boost/unordered/unordered_flat_map.hpp>

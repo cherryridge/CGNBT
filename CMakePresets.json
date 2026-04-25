@@ -1,4 +1,4 @@
-﻿{
+{
     "version": 3,
     "cmakeMinimumRequired": {"major": 4, "minor": 0},
     "configurePresets": [
@@ -17,9 +17,7 @@
                 "CMAKE_SYSTEM_NAME": "Windows",
                 "CMAKE_C_COMPILER": "clang-cl",
                 "CMAKE_CXX_COMPILER": "clang-cl",
-                "CMAKE_LINKER": "lld-link",
-                "CMAKE_C_SIMULATE_ID": "MSVC",
-                "CMAKE_CXX_SIMULATE_ID": "MSVC"
+                "CMAKE_LINKER_TYPE": "MSVC"
             }
         },
         {

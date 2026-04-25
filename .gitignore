@@ -1,4 +1,4 @@
-﻿# OS artifacts
+# OS artifacts
 .DS_Store
 Thumbs.db
 [Dd]esktop.ini
@@ -6,9 +6,11 @@ Thumbs.db
 # Build system generated folders
 .vscode/
 .vs/
+.VSCodeCounter/
 *.suo
 *.user
 *.VC.db
+cpp.hint
 .idea/
 *.iws
 *.iml
@@ -16,8 +18,7 @@ Thumbs.db
 .netrwhist
 .vimcache
 .cache
-compile_commands.json
-
+/compile_commands.json
 build/
 !*/build/
 out/

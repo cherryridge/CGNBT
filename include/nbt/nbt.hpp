@@ -1,4 +1,4 @@
-﻿#pragma once 
+#pragma once 
 
 #include "read.hpp" // IWYU pragma: export
 #include "readRaw.hpp" //IWYU pragma: export
