@@ -48,14 +48,6 @@ This implementation uses `Boost.assert`, `Boost.config`, `Boost.container_hash`,
 
 If the host is already using Boost, you may set `CGNBT_HAS_BOOST` to `TRUE` and set `CGNBT_BOOST_DIRECTORY` to the according path to stop this implementation from importing its own `Boost.*` dependency.
 
-### `PhysFS`
-
-This implementation uses `physfs` to process compressed CGNBT files.
-
-If the host already has `physfs` as a dependency, set `CGNBT_HAS_PHYSFS` to `TRUE` and set `CGNBT_PHYSFS_DIRECTORY` to the according path to stop this implementation from importing its own `physfs` dependency.
-
-#### Note: Currently we don't support using `std::filesystem::path` as the file path input. We will work on it soon.
-
 ### `zstd`
 
 This implementation uses `zstd` to process compressed CGNBT files.

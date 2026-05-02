@@ -1,58 +1,61 @@
 #pragma once
 #include <array>
-#include <format>
-#include <span>
+#include <concepts>
+#include <cstring>
 #include <stdexcept>
-#include <string>
 #include <vector>
-#include <physfs.h>
 #define ZSTD_STATIC_LINKING_ONLY
 #include <zstd.h>
 
 #include "error.hpp"
 
 namespace NBT::IO {
-    typedef uint8_t u8;
+    typedef uint8_t  u8;
     typedef uint16_t u16;
-    typedef uint32_t u32;
-    typedef int64_t i64;
+    typedef int64_t  i64;
     typedef uint64_t u64;
-    using std::array, std::format, std::move, std::swap, std::min, std::vector, std::string, std::streampos, std::streamoff, std::out_of_range, std::span, NBT::Error::pushError;
+    using std::array, std::min, std::memcpy, std::vector, std::same_as, std::out_of_range, NBT::Error::pushError;
 
-    //note: I currently don't want to get target's filesystem's alignment size dynamically. This part is too platform-specific and require a lot of experiments and tests.
     inline constexpr u16 BUFFER_SIZE = 4096;
 
+    template<typename S>
+    concept Readable = requires(S& s, u8* buf, size_t n) {
+        { s.readBlock(buf, n) } -> same_as<size_t>;
+        { s.incrementBy(n) };
+        { s.getOffset() } -> same_as<i64>;
+        // -1 if unknown
+        { s.getSize() } -> same_as<i64>;
+    };
+
+    template<typename S>
+    concept Writable = requires(S& s, const u8* buf, size_t n) {
+        { s.writeBlock(buf, n) } -> same_as<bool>;
+    };
+
+    template<Readable S>
     struct FileReader {
-        [[nodiscard]] explicit FileReader(const char* path) noexcept : file(PHYSFS_openRead(path)) {
-            if (file) {
-                if (PHYSFS_fileLength(file) > 5) {
-                    array<u8, 5> header{ 0 };
-                    PHYSFS_readBytes(file, header.data(), 5);
-                    PHYSFS_seek(file, 0);
-                    buffer.resize(BUFFER_SIZE);
-                    if (header[0] == 'c' && header[1] == 'G' && header[2] == 'n' && header[3] == 'b' && header[4] == 'T') {
-                        status = Status::Plain;
-                        PHYSFS_seek(file, 5);
-                        fetchBlock();
-                    }
-                    else if (ZSTD_isFrame(header.data(), 4) || ZSTD_isSkippableFrame(header.data(), 4)) {
-                        status = Status::Zstd;
-                        zstdStream = ZSTD_createDStream();
-                        ZSTD_initDStream(zstdStream);
-                        inBuffer.resize(ZSTD_DStreamInSize());
-                        src = { inBuffer.data(), 0, 0 };
-                        fetchBlock(true);
-                    }
-                }
-                else if (PHYSFS_fileLength(file) == 5) {
-                    array<u8, 5> header{ 0 };
-                    PHYSFS_readBytes(file, header.data(), 5);
-                    PHYSFS_seek(file, 0);
-                    if (header[0] == 'c' && header[1] == 'G' && header[2] == 'n' && header[3] == 'b' && header[4] == 'T') status = Status::Empty;
-                }
-                else pushError(format("File {} is not a valid CGNBT file!", path));
+        [[nodiscard]] explicit FileReader(S& source) noexcept : src_(&source), fileSize_(source.getSize()) {
+            array<u8, 5> hdr{};
+            if (source.readBlock(hdr.data(), 5) < 5) {
+                pushError("Stream too short to be a valid CGNBT file!");
+                return;
             }
-            else pushError(format("File {} failed to open, or is invalid!", path));
+            buffer_.resize(BUFFER_SIZE);
+            if (hdr[0]=='c' && hdr[1]=='G' && hdr[2]=='n' && hdr[3]=='b' && hdr[4]=='T') {
+                status_ = Status::Plain;
+                fetchBlock(true);
+            }
+            else if (ZSTD_isFrame(hdr.data(), 4) || ZSTD_isSkippableFrame(hdr.data(), 4)) {
+                status_ = Status::Zstd;
+                zstdStream_ = ZSTD_createDStream();
+                ZSTD_initDStream(zstdStream_);
+                inBuffer_.resize(ZSTD_DStreamInSize());
+                // Pre-fill inBuffer with the already-read 5 bytes — they are part of the zstd frame.
+                memcpy(inBuffer_.data(), hdr.data(), 5);
+                zsrc_ = {inBuffer_.data(), 5, 0};
+                fetchBlock(true);
+            }
+            else pushError("Stream does not contain a valid CGNBT file!");
         }
 
         FileReader(const FileReader&) = delete;
@@ -60,117 +63,88 @@ namespace NBT::IO {
         [[nodiscard]] FileReader(FileReader&&) noexcept = default;
         [[nodiscard]] FileReader& operator=(FileReader&&) noexcept = default;
 
-        [[nodiscard]] explicit operator bool() const noexcept { return status != Status::End; }
-        [[nodiscard]] bool eof() const noexcept { return status == Status::End; }
-        [[nodiscard]] bool empty() const noexcept { return status == Status::Empty; }
+        [[nodiscard]] explicit operator bool() const noexcept { return status_ != Status::End; }
+        [[nodiscard]] bool empty() const noexcept { return status_ == Status::Empty; }
 
-        [[nodiscard]] u8 operator*() {
-            if (status == Status::End) throw out_of_range("FileReader initialization failed or cursor is at EOF!");
-            return buffer[bufPos];
+        [[nodiscard]] u8 operator*() const {
+            if (status_ == Status::End) throw out_of_range("FileReader: cursor at EOF or initialization failed!");
+            return buffer_[bufPos_];
         }
 
-        //Advances the cursor to the next byte and returns the actual bytes written.
-        //Faster than `operator++` and `operator*`.
+        // Reads up to `length` decoded bytes into `dst`; returns bytes actually written.
+        // Faster than repeated operator++/operator*.
         [[nodiscard]] u64 getContent(u8* dst, u64 length) noexcept {
             u64 progress = 0;
-            while (progress < length && status != Status::End) {
-                if (bufPos == bufSize) {
+            while (progress < length && status_ != Status::End) {
+                if (bufPos_ == bufSize_) {
                     fetchBlock();
-                    if (status == Status::End) break;
+                    if (status_ == Status::End) break;
                 }
-                const u64 available = bufSize - bufPos, delta = min(available, length - progress);
-                memcpy(dst + progress, buffer.data() + bufPos, delta);
-                bufPos += delta;
+                const u64 available = bufSize_ - bufPos_, delta = min(available, length - progress);
+                memcpy(dst + progress, buffer_.data() + bufPos_, delta);
+                bufPos_ += delta;
                 progress += delta;
+                decoded_ += delta;
             }
             return progress;
         }
 
         FileReader& operator++() noexcept {
-            if (status != Status::End) {
-                bufPos++;
-                if (bufPos == bufSize) fetchBlock();
+            if (status_ != Status::End) {
+                ++bufPos_;
+                ++decoded_;
+                if (bufPos_ == bufSize_) fetchBlock();
             }
             return *this;
         }
 
-        //Ensure validation before calling.
-        [[nodiscard]] u64 currentOffset() const noexcept {
-            i64 off = PHYSFS_tell(file);
-            if (off == -1) return 0;
-            if (status == Status::Plain) return off - bufSize + bufPos;
-            else if (status == Status::Zstd) return off - src.size + src.pos;
-            else return 0;
-        }
+        // Decoded bytes consumed so far (useful for error reporting).
+        [[nodiscard]] u64 currentOffset() const noexcept { return decoded_; }
+        [[nodiscard]] bool compressed() const noexcept { return status_ == Status::Zstd; }
+        // Raw source size in bytes; 0 if the source reported unknown (-1).
+        [[nodiscard]] u64 getFileSize() const noexcept { return fileSize_ > 0 ? static_cast<u64>(fileSize_) : 0; }
 
-        //Ensure validation before calling.
-        [[nodiscard]] bool compressed() const noexcept { return status == Status::Zstd; }
-
-        //Ensure validation before calling.
-        [[nodiscard]] u64 getFileSize() const noexcept {
-            if (file != nullptr) {
-                auto size = PHYSFS_fileLength(file);
-                if (size == -1) return 0;
-                return static_cast<u64>(size);
-            }
-            return 0;
-        }
-
-        [[nodiscard]] bool close() noexcept {
-            status = Status::End;
-            if (zstdStream != nullptr) {
-                ZSTD_freeDStream(zstdStream);
-                zstdStream = nullptr;
-            }
-            if (file != nullptr) {
-                if(!PHYSFS_close(file)) return false;
-                //It's intended behavior to leave `file` unnulled so we can try to close it again in the destructor.
-                file = nullptr;
-            }
+        bool close() noexcept {
+            status_ = Status::End;
+            if (zstdStream_ != nullptr) { ZSTD_freeDStream(zstdStream_); zstdStream_ = nullptr; }
+            src_ = nullptr;
             return true;
         }
 
-        ~FileReader() {
-            if (zstdStream != nullptr) ZSTD_freeDStream(zstdStream);
-            if (file != nullptr) PHYSFS_close(file);
-        }
+        ~FileReader() { if (zstdStream_ != nullptr) ZSTD_freeDStream(zstdStream_); }
 
     private:
-        PHYSFS_File* file{ nullptr };
-        u64 bufPos{ 0 }, bufSize{ 0 };
-        vector<u8> buffer, inBuffer;
-        ZSTD_DStream* zstdStream{ nullptr };
-        ZSTD_inBuffer src{ nullptr, 0, 0 };
-        enum struct Status : u8 {
-            Plain, Zstd, End, Empty
-        } status{ Status::End };
+        S* src_{nullptr};
+        i64 fileSize_{-1};
+        u64 bufPos_{0}, bufSize_{0}, decoded_{0};
+        vector<u8> buffer_, inBuffer_;
+        ZSTD_DStream* zstdStream_{nullptr};
+        ZSTD_inBuffer zsrc_{nullptr, 0, 0};
+        enum struct Status : u8 { Plain, Zstd, End, Empty } status_{Status::End};
 
-        //`isFirstFetch` is only used in Zstd mode currently.
+        // isFirstFetch=true: treat an empty first block as an empty (but valid) file.
         void fetchBlock(bool isFirstFetch = false) noexcept {
-            bufPos = 0;
-            bufSize = 0;
-            switch (status) {
+            bufPos_ = 0;
+            bufSize_ = 0;
+            switch (status_) {
                 case Status::Plain: {
-                    bufSize = PHYSFS_readBytes(file, buffer.data(), BUFFER_SIZE);
-                    if (bufSize == 0) status = Status::End;
+                    bufSize_ = src_->readBlock(buffer_.data(), BUFFER_SIZE);
+                    if (bufSize_ == 0) status_ = isFirstFetch ? Status::Empty : Status::End;
                     break;
                 }
                 case Status::Zstd: {
-                    ZSTD_outBuffer dst{ buffer.data(), BUFFER_SIZE, 0 };
+                    ZSTD_outBuffer dst{buffer_.data(), BUFFER_SIZE, 0};
                     while (dst.pos < dst.size) {
-                        if (src.pos == src.size) {
-                            src.size = PHYSFS_readBytes(file, inBuffer.data(), inBuffer.size());
-                            src.pos = 0;
-                            if (src.size == 0) break;
+                        if (zsrc_.pos == zsrc_.size) {
+                            zsrc_.size = src_->readBlock(inBuffer_.data(), inBuffer_.size());
+                            zsrc_.pos = 0;
+                            if (zsrc_.size == 0) break;
                         }
-                        auto result = ZSTD_decompressStream(zstdStream, &dst, &src);
-                        if (ZSTD_isError(result) || (result == 0 && dst.pos == 0)) break;
+                        const auto r = ZSTD_decompressStream(zstdStream_, &dst, &zsrc_);
+                        if (ZSTD_isError(r) || (r == 0 && dst.pos == 0)) break;
                     }
-                    bufSize = dst.pos;
-                    if (bufSize == 0) {
-                        if (isFirstFetch) status = Status::Empty;
-                        else status = Status::End;
-                    }
+                    bufSize_ = dst.pos;
+                    if (bufSize_ == 0) status_ = isFirstFetch ? Status::Empty : Status::End;
                     break;
                 }
                 default: break;

@@ -288,21 +288,21 @@ namespace NBT::Type {
         [[nodiscard]] Tag(const TagArrayFloat& copy)  noexcept : tagArrayFloat(copy),  type(Types::ArrayFloat)  {}
         [[nodiscard]] Tag(const TagArrayDouble& copy) noexcept : tagArrayDouble(copy), type(Types::ArrayDouble) {}
         [[nodiscard]] Tag(const TagArrayRaw& copy)    noexcept : tagArrayRaw(copy),    type(Types::ArrayRaw)    {}
-        [[nodiscard]] Tag(TagObject&& _move)      noexcept : tagObject(move(_move)),      type(Types::Object)      {}
-        [[nodiscard]] Tag(TagIVarInt&& _move)     noexcept : tagIVarInt(move(_move)),     type(Types::IVarInt)     {}
-        [[nodiscard]] Tag(TagUVarInt&& _move)     noexcept : tagUVarInt(move(_move)),     type(Types::UVarInt)     {}
-        [[nodiscard]] Tag(TagBool&& _move)        noexcept : tagBool(move(_move)),        type(Types::Bool)        {}
-        [[nodiscard]] Tag(TagHex&& _move)         noexcept : tagHex(move(_move)),         type(Types::Hex)         {}
-        [[nodiscard]] Tag(TagFloat&& _move)       noexcept : tagFloat(move(_move)),       type(Types::Float)       {}
-        [[nodiscard]] Tag(TagDouble&& _move)      noexcept : tagDouble(move(_move)),      type(Types::Double)      {}
-        [[nodiscard]] Tag(TagArray&& _move)       noexcept : tagArray(move(_move)),       type(Types::Array)       {}
-        [[nodiscard]] Tag(TagString&& _move)      noexcept : tagString(move(_move)),      type(Types::String)      {}
-        [[nodiscard]] Tag(TagRaw&& _move)         noexcept : tagRaw(move(_move)),         type(Types::Raw)         {}
-        [[nodiscard]] Tag(TagArrayBool&& _move)   noexcept : tagArrayBool(move(_move)),   type(Types::ArrayBool)   {}
-        [[nodiscard]] Tag(TagArrayHex&& _move)    noexcept : tagArrayHex(move(_move)),    type(Types::ArrayHex)    {}
-        [[nodiscard]] Tag(TagArrayFloat&& _move)  noexcept : tagArrayFloat(move(_move)),  type(Types::ArrayFloat)  {}
-        [[nodiscard]] Tag(TagArrayDouble&& _move) noexcept : tagArrayDouble(move(_move)), type(Types::ArrayDouble) {}
-        [[nodiscard]] Tag(TagArrayRaw&& _move)    noexcept : tagArrayRaw(move(_move)),    type(Types::ArrayRaw)    {}
+        [[nodiscard]] Tag(TagObject&& move_)      noexcept : tagObject(move(move_)),      type(Types::Object)      {}
+        [[nodiscard]] Tag(TagIVarInt&& move_)     noexcept : tagIVarInt(move(move_)),     type(Types::IVarInt)     {}
+        [[nodiscard]] Tag(TagUVarInt&& move_)     noexcept : tagUVarInt(move(move_)),     type(Types::UVarInt)     {}
+        [[nodiscard]] Tag(TagBool&& move_)        noexcept : tagBool(move(move_)),        type(Types::Bool)        {}
+        [[nodiscard]] Tag(TagHex&& move_)         noexcept : tagHex(move(move_)),         type(Types::Hex)         {}
+        [[nodiscard]] Tag(TagFloat&& move_)       noexcept : tagFloat(move(move_)),       type(Types::Float)       {}
+        [[nodiscard]] Tag(TagDouble&& move_)      noexcept : tagDouble(move(move_)),      type(Types::Double)      {}
+        [[nodiscard]] Tag(TagArray&& move_)       noexcept : tagArray(move(move_)),       type(Types::Array)       {}
+        [[nodiscard]] Tag(TagString&& move_)      noexcept : tagString(move(move_)),      type(Types::String)      {}
+        [[nodiscard]] Tag(TagRaw&& move_)         noexcept : tagRaw(move(move_)),         type(Types::Raw)         {}
+        [[nodiscard]] Tag(TagArrayBool&& move_)   noexcept : tagArrayBool(move(move_)),   type(Types::ArrayBool)   {}
+        [[nodiscard]] Tag(TagArrayHex&& move_)    noexcept : tagArrayHex(move(move_)),    type(Types::ArrayHex)    {}
+        [[nodiscard]] Tag(TagArrayFloat&& move_)  noexcept : tagArrayFloat(move(move_)),  type(Types::ArrayFloat)  {}
+        [[nodiscard]] Tag(TagArrayDouble&& move_) noexcept : tagArrayDouble(move(move_)), type(Types::ArrayDouble) {}
+        [[nodiscard]] Tag(TagArrayRaw&& move_)    noexcept : tagArrayRaw(move(move_)),    type(Types::ArrayRaw)    {}
 
         Tag& operator=(const Tag& copy) noexcept {
             if (this == &copy) goto same;
@@ -346,8 +346,8 @@ namespace NBT::Type {
             same: return *this;
         }
 
-        Tag& operator=(Tag&& _move) noexcept {
-            if (this == &_move) goto same;
+        Tag& operator=(Tag&& move_) noexcept {
+            if (this == &move_) goto same;
             switch (type) {
                 case Types::Object:      tagObject.~TagObject();           break;
                 case Types::IVarInt:     tagIVarInt.~TagIVarInt();         break;
@@ -366,23 +366,23 @@ namespace NBT::Type {
                 case Types::ArrayRaw:    tagArrayRaw.~TagArrayRaw();       break;
                 default:                                                   break;
             }
-            type = _move.type;
+            type = move_.type;
             switch (type) {
-                case Types::Object:      new(&tagObject)      TagObject(move(_move.tagObject));           break;
-                case Types::IVarInt:     new(&tagIVarInt)     TagIVarInt(move(_move.tagIVarInt));         break;
-                case Types::UVarInt:     new(&tagUVarInt)     TagUVarInt(move(_move.tagUVarInt));         break;
-                case Types::Bool:        new(&tagBool)        TagBool(move(_move.tagBool));               break;
-                case Types::Hex:         new(&tagHex)         TagHex(move(_move.tagHex));                 break;
-                case Types::Float:       new(&tagFloat)       TagFloat(move(_move.tagFloat));             break;
-                case Types::Double:      new(&tagDouble)      TagDouble(move(_move.tagDouble));           break;
-                case Types::Array:       new(&tagArray)       TagArray(move(_move.tagArray));             break;
-                case Types::String:      new(&tagString)      TagString(move(_move.tagString));           break;
-                case Types::Raw:         new(&tagRaw)         TagRaw(move(_move.tagRaw));                 break;
-                case Types::ArrayBool:   new(&tagArrayBool)   TagArrayBool(move(_move).tagArrayBool);     break;
-                case Types::ArrayHex:    new(&tagArrayHex)    TagArrayHex(move(_move).tagArrayHex);       break;
-                case Types::ArrayFloat:  new(&tagArrayFloat)  TagArrayFloat(move(_move).tagArrayFloat);   break;
-                case Types::ArrayDouble: new(&tagArrayDouble) TagArrayDouble(move(_move).tagArrayDouble); break;
-                case Types::ArrayRaw:    new(&tagArrayRaw)    TagArrayRaw(move(_move).tagArrayRaw);       break;
+                case Types::Object:      new(&tagObject)      TagObject(move(move_.tagObject));           break;
+                case Types::IVarInt:     new(&tagIVarInt)     TagIVarInt(move(move_.tagIVarInt));         break;
+                case Types::UVarInt:     new(&tagUVarInt)     TagUVarInt(move(move_.tagUVarInt));         break;
+                case Types::Bool:        new(&tagBool)        TagBool(move(move_.tagBool));               break;
+                case Types::Hex:         new(&tagHex)         TagHex(move(move_.tagHex));                 break;
+                case Types::Float:       new(&tagFloat)       TagFloat(move(move_.tagFloat));             break;
+                case Types::Double:      new(&tagDouble)      TagDouble(move(move_.tagDouble));           break;
+                case Types::Array:       new(&tagArray)       TagArray(move(move_.tagArray));             break;
+                case Types::String:      new(&tagString)      TagString(move(move_.tagString));           break;
+                case Types::Raw:         new(&tagRaw)         TagRaw(move(move_.tagRaw));                 break;
+                case Types::ArrayBool:   new(&tagArrayBool)   TagArrayBool(move(move_).tagArrayBool);     break;
+                case Types::ArrayHex:    new(&tagArrayHex)    TagArrayHex(move(move_).tagArrayHex);       break;
+                case Types::ArrayFloat:  new(&tagArrayFloat)  TagArrayFloat(move(move_).tagArrayFloat);   break;
+                case Types::ArrayDouble: new(&tagArrayDouble) TagArrayDouble(move(move_).tagArrayDouble); break;
+                case Types::ArrayRaw:    new(&tagArrayRaw)    TagArrayRaw(move(move_).tagArrayRaw);       break;
                 default:                                                                                  break;
             }
             same: return *this;
@@ -412,24 +412,24 @@ namespace NBT::Type {
             }
         }
 
-        [[nodiscard]] Tag(Tag&& _move) noexcept {
-            type = _move.type;
+        [[nodiscard]] Tag(Tag&& move_) noexcept {
+            type = move_.type;
             switch (type) {
-                case Types::Object:      new(&tagObject)      TagObject(move(_move.tagObject));           break;
-                case Types::IVarInt:     new(&tagIVarInt)     TagIVarInt(move(_move.tagIVarInt));         break;
-                case Types::UVarInt:     new(&tagUVarInt)     TagUVarInt(move(_move.tagUVarInt));         break;
-                case Types::Bool:        new(&tagBool)        TagBool(move(_move.tagBool));               break;
-                case Types::Hex:         new(&tagHex)         TagHex(move(_move.tagHex));                 break;
-                case Types::Float:       new(&tagFloat)       TagFloat(move(_move.tagFloat));             break;
-                case Types::Double:      new(&tagDouble)      TagDouble(move(_move.tagDouble));           break;
-                case Types::Array:       new(&tagArray)       TagArray(move(_move.tagArray));             break;
-                case Types::String:      new(&tagString)      TagString(move(_move.tagString));           break;
-                case Types::Raw:         new(&tagRaw)         TagRaw(move(_move.tagRaw));                 break;
-                case Types::ArrayBool:   new(&tagArrayBool)   TagArrayBool(move(_move).tagArrayBool);     break;
-                case Types::ArrayHex:    new(&tagArrayHex)    TagArrayHex(move(_move).tagArrayHex);       break;
-                case Types::ArrayFloat:  new(&tagArrayFloat)  TagArrayFloat(move(_move).tagArrayFloat);   break;
-                case Types::ArrayDouble: new(&tagArrayDouble) TagArrayDouble(move(_move).tagArrayDouble); break;
-                case Types::ArrayRaw:    new(&tagArrayRaw)    TagArrayRaw(move(_move).tagArrayRaw);       break;
+                case Types::Object:      new(&tagObject)      TagObject(move(move_.tagObject));           break;
+                case Types::IVarInt:     new(&tagIVarInt)     TagIVarInt(move(move_.tagIVarInt));         break;
+                case Types::UVarInt:     new(&tagUVarInt)     TagUVarInt(move(move_.tagUVarInt));         break;
+                case Types::Bool:        new(&tagBool)        TagBool(move(move_.tagBool));               break;
+                case Types::Hex:         new(&tagHex)         TagHex(move(move_.tagHex));                 break;
+                case Types::Float:       new(&tagFloat)       TagFloat(move(move_.tagFloat));             break;
+                case Types::Double:      new(&tagDouble)      TagDouble(move(move_.tagDouble));           break;
+                case Types::Array:       new(&tagArray)       TagArray(move(move_.tagArray));             break;
+                case Types::String:      new(&tagString)      TagString(move(move_.tagString));           break;
+                case Types::Raw:         new(&tagRaw)         TagRaw(move(move_.tagRaw));                 break;
+                case Types::ArrayBool:   new(&tagArrayBool)   TagArrayBool(move(move_).tagArrayBool);     break;
+                case Types::ArrayHex:    new(&tagArrayHex)    TagArrayHex(move(move_).tagArrayHex);       break;
+                case Types::ArrayFloat:  new(&tagArrayFloat)  TagArrayFloat(move(move_).tagArrayFloat);   break;
+                case Types::ArrayDouble: new(&tagArrayDouble) TagArrayDouble(move(move_).tagArrayDouble); break;
+                case Types::ArrayRaw:    new(&tagArrayRaw)    TagArrayRaw(move(move_).tagArrayRaw);       break;
                 default:                                                                                  break;
             }
         }

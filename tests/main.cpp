@@ -1,8 +1,8 @@
 #include <chrono>
+#include <fstream>
 #include <iostream>
 #include <vector>
 #include <boost/unordered/unordered_flat_map.hpp>
-#include <physfs.h>
 #ifdef _WIN32
     #include <Windows.h>
 #endif // _WIN32
@@ -12,32 +12,28 @@
 int main() {
     typedef uint8_t u8;
     using namespace NBT;
-    using std::cout, std::endl, std::string, std::vector, boost::unordered_flat_map, std::chrono::steady_clock, std::chrono::duration_cast, std::chrono::microseconds;
+    using std::cout, std::endl, std::string, std::ifstream, std::ofstream, std::ios, std::vector, std::chrono::steady_clock, std::chrono::duration_cast, std::chrono::microseconds, boost::unordered_flat_map;
 
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 #endif // _WIN32
 
-    PHYSFS_init(nullptr);
-    PHYSFS_mount("E:/", "/", 1);
-    PHYSFS_setWriteDir("E:/");
-
-
 {
     cout << "========Reading NBT From File========" << endl;
     unordered_flat_map<string, Tag> result;
     auto start = steady_clock::now();
-    if (NBT::read("a.cgb", result)) {
+    ifstream f("E:/a.cgb", ios::binary);
+    if (readStream(f, result)) {
         auto end = steady_clock::now();
         cout << "Parse took " << duration_cast<microseconds>(end - start).count() << "us" << endl;
-        auto str = NBT::serialize(result);
+        auto str = serialize(result);
         cout << str << endl;
         cout << "========Test Completed========" << endl;
     }
     else {
         cout << "Parse failed! Errors:" << endl;
-        auto errors = NBT::getErrors();
+        auto errors = getErrors();
         for (const auto& error : errors) cout << error << endl;
     }
 }
@@ -91,20 +87,24 @@ int main() {
     tempMap.emplace("???", tempMap3);
     writeTest.emplace("the_most_thorough_embedding_test_ever", TagObject(tempMap));
 
-    cout << write("test.cgb", writeTest, true, true) << endl;
+    {
+        ofstream f("E:/test.cgb", ios::binary | ios::trunc);
+        cout << writeStream(f, writeTest, true) << endl;
+    }
 
     unordered_flat_map<string, Tag> result2;
     auto start = steady_clock::now();
-    if (NBT::read("test.cgb", result2)) {
+    ifstream f("E:/test.cgb", ios::binary);
+    if (readStream(f, result2)) {
         auto end = steady_clock::now();
         cout << "Parse took " << duration_cast<microseconds>(end - start).count() << "us" << endl;
-        auto str = NBT::serialize(result2);
+        auto str = serialize(result2);
         cout << str << endl;
         cout << "========Test Completed========" << endl;
     }
     else {
         cout << "Parse failed! Errors:" << endl;
-        auto errors = NBT::getErrors();
+        auto errors = getErrors();
         for(const auto& error : errors) cout << error << endl;
     }
 }
@@ -112,32 +112,43 @@ int main() {
 {
     cout << "========Empty Files========" << endl;
     unordered_flat_map<string, Tag> emptyTest1, result1;
-    cout << write("empty1.cgb", emptyTest1, true, true) << endl;
-    if (NBT::read("empty1.cgb", result1)) {
-        auto str = NBT::serialize(result1);
-        cout << str << endl;
-        cout << "========Test Completed========" << endl;
+    {
+        ofstream f("E:/empty1.cgb", ios::binary | ios::trunc);
+        cout << writeStream(f, emptyTest1, true) << endl;
     }
-    else {
-        cout << "Parse failed! Errors:" << endl;
-        auto errors = NBT::getErrors();
-        for (const auto& error : errors) cout << error << endl;
+    {
+        ifstream f("E:/empty1.cgb", ios::binary);
+        if (readStream(f, result1)) {
+            auto str = serialize(result1);
+            cout << str << endl;
+            cout << "========Test Completed========" << endl;
+        }
+        else {
+            cout << "Parse failed! Errors:" << endl;
+            auto errors = getErrors();
+            for (const auto& error : errors) cout << error << endl;
+        }
     }
 
     unordered_flat_map<string, Tag> emptyTest2, result2;
-    cout << write("empty2.cgb", emptyTest2, true, false) << endl;
-    if (NBT::read("empty2.cgb", result2)) {
-        auto str = NBT::serialize(result2);
-        cout << str << endl;
+    {
+        ofstream f("E:/empty2.cgb", ios::binary | ios::trunc);
+        cout << writeStream(f, emptyTest2) << endl;
     }
-    else {
-        cout << "Parse failed! Errors:" << endl;
-        auto errors = NBT::getErrors();
-        for (const auto& error : errors) cout << error << endl;
+    {
+        ifstream f("E:/empty2.cgb", ios::binary);
+        if (readStream(f, result2)) {
+            auto str = serialize(result2);
+            cout << str << endl;
+        }
+        else {
+            cout << "Parse failed! Errors:" << endl;
+            auto errors = getErrors();
+            for (const auto& error : errors) cout << error << endl;
+        }
     }
     cout << "========Test Completed========" << endl;
 }
 
-    PHYSFS_deinit();
     return 0;
 }

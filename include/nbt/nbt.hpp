@@ -1,16 +1,17 @@
 #pragma once 
 
-#include "read.hpp" // IWYU pragma: export
-#include "readRaw.hpp" //IWYU pragma: export
-#include "write.hpp"  // IWYU pragma: export
-#include "serialize.hpp"  // IWYU pragma: export
-#include "error.hpp" // IWYU pragma: export
+#include "error.hpp"     // IWYU pragma: export
+#include "read.hpp"      // IWYU pragma: export
+#include "serialize.hpp" // IWYU pragma: export
+#include "types.hpp"     // IWYU pragma: export
+#include "write.hpp"     // IWYU pragma: export
 
 namespace NBT {
     //IO APIs
-    using NBT::IO::read, NBT::IO::readRawData, NBT::IO::write, NBT::IO::writeRawData, NBT::IO::serialize, NBT::IO::getFileInfo, NBT::Error::getErrors;
-
-    using NBT::IO::NBTFileInfo, NBT::IO::RawDataStatus;
+    using NBT::IO::readStream, NBT::IO::writeStream, NBT::IO::writeData, NBT::IO::serialize, NBT::IO::getFileInfo, NBT::IO::NBTFileInfo;
+    
+    //Errors
+    using NBT::Error::getLastError, NBT::Error::getErrors;
 
     //Tags
     using NBT::Type::Tag;

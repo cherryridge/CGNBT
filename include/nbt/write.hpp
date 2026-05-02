@@ -1,86 +1,79 @@
 #pragma once
 #include <array>
 #include <format>
+#include <ostream>
 #include <vector>
 #include <boost/unordered/unordered_map.hpp>
-#include <physfs.h>
 #include <zstd.h>
 
-#include "type.hpp"
+#include "adapters.hpp"
 #include "auxiliary.hpp"
 #include "error.hpp"
+#include "FileReader.hpp"
+#include "types.hpp"
 
 namespace NBT::IO {
     typedef uint8_t u8;
     typedef uint64_t u64;
     using namespace NBT::Type;
-    using std::array, std::vector, std::format, boost::unordered_flat_map, NBT::Aux::writeVarText, NBT::Aux::writeIVarInt, NBT::Aux::writeUVarInt, NBT::Error::clearErrors, NBT::Error::pushError;
+    using std::array, std::vector, std::format, std::ostream, boost::unordered_flat_map, NBT::Aux::writeVarText, NBT::Aux::writeIVarInt, NBT::Aux::writeUVarInt, NBT::Error::clearErrors, NBT::Error::pushError;
 
-    [[nodiscard]] inline bool writeObject(const unordered_flat_map<string, Tag>&, vector<u8>&) noexcept;
+    [[nodiscard]] inline bool writeObject     (const TagObject&      , vector<u8>&) noexcept;
+                  inline void writeIVarInt    (const TagIVarInt&     , vector<u8>&) noexcept;
+                  inline void writeUVarInt    (const TagUVarInt&     , vector<u8>&) noexcept;
+                  inline void writeBool       (const TagBool&        , vector<u8>&) noexcept;
+                  inline void writeHex        (const TagHex&         , vector<u8>&) noexcept;
+                  inline void writeFloat      (const TagFloat&       , vector<u8>&) noexcept;
+                  inline void writeDouble     (const TagDouble&      , vector<u8>&) noexcept;
+    [[nodiscard]] inline bool writeArray      (const TagArray&       , vector<u8>&) noexcept;
+                  inline void writeString     (const TagString&      , vector<u8>&) noexcept;
+                  inline void writeRaw        (const TagRaw&         , vector<u8>&) noexcept;
+                  inline void writeArrayBool  (const TagArrayBool&   , vector<u8>&) noexcept;
+                  inline void writeArrayHex   (const TagArrayHex&    , vector<u8>&) noexcept;
+                  inline void writeArrayFloat (const TagArrayFloat&  , vector<u8>&) noexcept;
+                  inline void writeArrayDouble(const TagArrayDouble& , vector<u8>&) noexcept;
+                  inline void writeArrayRaw   (const TagArrayRaw&    , vector<u8>&) noexcept;
 
-    inline void writeIVarInt    (const TagIVarInt&    , vector<u8>&) noexcept;
-    inline void writeUVarInt    (const TagUVarInt&    , vector<u8>&) noexcept;
-    inline void writeBool       (const TagBool&       , vector<u8>&) noexcept;
-    inline void writeHex        (const TagHex&        , vector<u8>&) noexcept;
-    inline void writeFloat      (const TagFloat&      , vector<u8>&) noexcept;
-    inline void writeDouble     (const TagDouble&     , vector<u8>&) noexcept;
+    inline constexpr array<u8, 5> MAGIC = {'c', 'G', 'n', 'b', 'T'};
 
-    [[nodiscard]] inline bool writeArray(const TagArray&, vector<u8>&) noexcept;
-
-    inline void writeString     (const TagString&     , vector<u8>&) noexcept;
-    inline void writeRaw        (const TagRaw&        , vector<u8>&) noexcept;
-    inline void writeArrayBool  (const TagArrayBool&  , vector<u8>&) noexcept;
-    inline void writeArrayHex   (const TagArrayHex&   , vector<u8>&) noexcept;
-    inline void writeArrayFloat (const TagArrayFloat& , vector<u8>&) noexcept;
-    inline void writeArrayDouble(const TagArrayDouble&, vector<u8>&) noexcept;
-    inline void writeArrayRaw   (const TagArrayRaw&   , vector<u8>&) noexcept;
-
-    inline static constexpr array<u8, 5> MAGIC = { 'c', 'G', 'n', 'b', 'T' };
-
-    [[nodiscard]] inline bool writeRawData(const unordered_flat_map<string, Tag>& data, vector<u8>& result, bool addMagic = false) noexcept {
+    [[nodiscard]] inline bool writeData(const unordered_flat_map<string, Tag>& data, vector<u8>& result, bool addMagic = false) noexcept {
         clearErrors();
         if (addMagic) result.insert(result.end(), MAGIC.begin(), MAGIC.end());
-        if (writeObject(data, result)) return true;
-        return false;
+        TagObject obj{data};
+        return writeObject(obj, result);
     }
 
-    //If exists, setting `_override` to true will override the file, or it will fail.
-    [[nodiscard]] inline bool write(const char* path, const unordered_flat_map<string, Tag>& data, bool _override = false, bool zstd = false, u8 compressionLevel = 3) noexcept {
-        if(!_override && PHYSFS_exists(path)) {
-            pushError(format("File {} already exists! Use `_override=true` to override it.", path));
+    template<Writable W>
+    [[nodiscard]] inline bool writeStream(W& dest, const unordered_flat_map<string, Tag>& data, bool zstd = false, u8 compressionLevel = 3) noexcept {
+        vector<u8> result;
+        if (!writeData(data, result, !zstd)) return false;
+        if (zstd) {
+            vector<u8> compressed(ZSTD_compressBound(result.size()));
+            const auto sz = ZSTD_compress(compressed.data(), compressed.size(), result.data(), result.size(), compressionLevel > 22 ? 22 : compressionLevel == 0 ? 1 : compressionLevel);
+            if (ZSTD_isError(sz)) {
+                pushError(format("ZSTD compression error: {}", ZSTD_getErrorName(sz)));
+                return false;
+            }
+            compressed.resize(sz);
+            if (!dest.writeBlock(compressed.data(), compressed.size())) {
+                pushError("Failed to write compressed data to stream!");
+                return false;
+            }
+        }
+        else if (!dest.writeBlock(result.data(), result.size())) {
+            pushError("Failed to write data to stream!");
             return false;
         }
-        vector<u8> result;
-        if (writeRawData(data, result, !zstd)) {
-            auto* file = PHYSFS_openWrite(path);
-            if (file == nullptr) goto fail;
-            if (zstd) {
-                vector<u8> compressed(ZSTD_compressBound(result.size()));
-                const auto sizeOrError = ZSTD_compress(compressed.data(), compressed.size(), result.data(), result.size(), compressionLevel > 22 ? 22 : compressionLevel == 0 ? 1 : compressionLevel);
-                if(ZSTD_isError(sizeOrError)) {
-                    pushError(format("ZSTD compression error: {}", ZSTD_getErrorName(sizeOrError)));
-                    goto fail;
-                }
-                compressed.resize(sizeOrError);
-                if (PHYSFS_writeBytes(file, compressed.data(), compressed.size()) != compressed.size()) {
-                    pushError(format("Failed to write all bytes to file {}: {}", path, PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())));
-                    goto fail;
-                }
-            }
-            else if (PHYSFS_writeBytes(file, result.data(), result.size()) != result.size()) {
-                pushError(format("Failed to write all bytes to file {}: {}", path, PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())));
-                goto fail;
-            }
-            if (!PHYSFS_close(file)) pushError(format("Failed to close file {}: {}", path, PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())));
-            return true;
-        fail:
-            if (!PHYSFS_close(file)) pushError(format("Failed to close file {}: {}", path, PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())));
-        }
-        return false;
+        return true;
     }
 
-    [[nodiscard]] inline bool writeObject(const unordered_flat_map<string, Tag>& payload, vector<u8>& result) noexcept {
-        for(const auto& [key, value] : payload) switch(value.type) {
+    [[nodiscard]] inline bool writeStream(ostream& s, const unordered_flat_map<string, Tag>& data, bool zstd = false, u8 compressionLevel = 3) noexcept {
+        StdOut adapter(s);
+        return writeStream(adapter, data, zstd, compressionLevel);
+    }
+
+    [[nodiscard]] inline bool writeObject(const TagObject& data, vector<u8>& result) noexcept {
+        for(const auto& [key, value] : data.payload) switch(value.type) {
             case Types::Object: {
                 result.push_back(static_cast<u8>(Types::Object) << 4);
                 writeVarText(key, result);

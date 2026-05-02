@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_FIND_USE_PACKAGE_REGISTRY FALSE)
 set(CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY FALSE)
 set(CMAKE_SUPPRESS_REGENERATION ON CACHE BOOL "" FORCE)
@@ -80,36 +81,6 @@ if (NOT CGNBT_HAS_BOOST)
 endif()
 #----------------------------------
 
-#------------Physfs----------------
-option(CGNBT_HAS_PHYSFS "Whether to not add Physfs dependency privately." OFF)
-
-if(NOT CGNBT_HAS_PHYSFS)
-    set(CGNBT_PHYSFS_DIRECTORY "libs/physfs" CACHE STRING "")
-
-    set(PHYSFS_ARCHIVE_ZIP         ON  CACHE BOOL "")
-    set(PHYSFS_ARCHIVE_7Z          ON  CACHE BOOL "")
-    set(PHYSFS_ARCHIVE_GRP         OFF CACHE BOOL "")
-    set(PHYSFS_ARCHIVE_WAD         OFF CACHE BOOL "")
-    set(PHYSFS_ARCHIVE_CSM         OFF CACHE BOOL "")
-    set(PHYSFS_ARCHIVE_HOG         OFF CACHE BOOL "")
-    set(PHYSFS_ARCHIVE_MVL         OFF CACHE BOOL "")
-    set(PHYSFS_ARCHIVE_QPAK        OFF CACHE BOOL "")
-    set(PHYSFS_ARCHIVE_SL          OFF CACHE BOOL "")
-    set(PHYSFS_ARCHIVE_ISO9660     OFF CACHE BOOL "")
-    set(PHYSFS_ARCHIVE_VDF         OFF CACHE BOOL "")
-    set(PHYSFS_ARCHIVE_LECARCHIVES OFF CACHE BOOL "")
-    set(PHYSFS_BUILD_STATIC        ON  CACHE BOOL "")
-    set(PHYSFS_BUILD_SHARED        OFF CACHE BOOL "")
-    set(PHYSFS_BUILD_TEST          OFF CACHE BOOL "")
-    set(PHYSFS_DISABLE_INSTALL     ON  CACHE BOOL "")
-    set(PHYSFS_BUILD_DOCS          OFF CACHE BOOL "")
-    if(UNIX)
-        set(PHYSFS_TARGETNAME_DIST "physfs-dist-please-do-not-collide-with-anything-ok" CACHE STRING "")
-    endif()
-    add_subdirectory(${CGNBT_PHYSFS_DIRECTORY})
-endif()
-#----------------------------------
-
 #--------------Zstd----------------
 option(CGNBT_HAS_ZSTD "Whether to not add Zstd dependency privately." OFF)
 
@@ -149,7 +120,6 @@ target_include_directories(${PROJECT_NAME} INTERFACE
     "${CGNBT_BOOST_DIRECTORY}/throw_exception/include"
     "${CGNBT_BOOST_DIRECTORY}/unordered/include"
 
-    "${CGNBT_PHYSFS_DIRECTORY}/src"
     "${CGNBT_ZSTD_DIRECTORY}/lib"
 
     "${CMAKE_SOURCE_DIR}/include"
@@ -158,6 +128,5 @@ target_include_directories(${PROJECT_NAME} INTERFACE
 target_link_libraries(${PROJECT_NAME} INTERFACE
     ScopedFlags_CGNBT
 
-    physfs-static
     libzstd_static
 )

@@ -9,11 +9,12 @@ namespace NBT::Aux {
     typedef uint8_t u8;
     typedef int64_t i64;
     typedef uint64_t u64;
-    using std::array, std::string, std::vector, NBT::IO::FileReader;
+    using std::array, std::string, std::vector, NBT::IO::FileReader, NBT::IO::Readable;
 
-    inline static constexpr u8 MSB = 0x80;
+    inline constexpr u8 MSB = 0x80;
 
-    [[nodiscard]] inline string readVarText(FileReader& cursor) noexcept {
+    template<Readable S>
+    [[nodiscard]] inline string readVarText(FileReader<S>& cursor) noexcept {
         vector<u8> buffer;
         while (!(*cursor & MSB)) {
             buffer.push_back(*cursor);
@@ -31,9 +32,11 @@ namespace NBT::Aux {
         result[result.size() - 1] += MSB;
     }
 
-    //Sets cursor to the start of the next byte.
-    [[nodiscard]] inline u64 readUVarInt(FileReader& cursor) noexcept {
-        u8 length = 1, buffer[10]{ 0 };
+    // Sets cursor to the start of the next byte.
+    template<Readable S>
+    [[nodiscard]] inline u64 readUVarInt(FileReader<S>& cursor) noexcept {
+        u8 length = 1;
+        array<u8, 10> buffer{};
         buffer[0] = *cursor;
         while (!(*cursor & MSB)) {
             ++cursor;
@@ -46,14 +49,15 @@ namespace NBT::Aux {
         return result;
     }
 
-    //Sets cursor to the start of the next byte.
-    [[nodiscard]] inline i64 readIVarInt(FileReader& cursor) noexcept {
-        const auto _unsigned = readUVarInt(cursor);
-        return (_unsigned >> 1) ^ -(_unsigned & 1);
+    // Sets cursor to the start of the next byte.
+    template<Readable S>
+    [[nodiscard]] inline i64 readIVarInt(FileReader<S>& cursor) noexcept {
+        const auto unsigned_ = readUVarInt(cursor);
+        return (unsigned_ >> 1) ^ -(unsigned_ & 1);
     }
 
     inline void writeUVarInt(u64 data, vector<u8>& result) noexcept {
-        array<u8, 10> buffer{ 0 };
+        array<u8, 10> buffer{};
         u8 cursor = 0;
         while (data > 0) {
             buffer[cursor] = static_cast<u8>(data & static_cast<i64>(MSB - 1));

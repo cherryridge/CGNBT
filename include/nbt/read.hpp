@@ -1,15 +1,17 @@
 #pragma once
 #include <array>
 #include <format>
+#include <istream>
+#include <span>
 #include <string>
 #include <vector>
 #include <boost/unordered/unordered_map.hpp>
-#include <physfs.h>
 
-#include "type.hpp"
-#include "FileReader.hpp"
+#include "adapters.hpp"
 #include "auxiliary.hpp"
 #include "error.hpp"
+#include "FileReader.hpp"
+#include "types.hpp"
 
 namespace NBT::IO {
     typedef char8_t c8;
@@ -17,65 +19,72 @@ namespace NBT::IO {
     typedef uint32_t u32;
     typedef uint64_t u64;
     using namespace NBT::Type;
-    using std::vector, std::array, std::span, std::string, std::move, std::bit_cast, std::to_string, std::format, boost::unordered_flat_map, NBT::Aux::readVarText, NBT::Aux::readIVarInt, NBT::Aux::readUVarInt, NBT::Error::clearErrors, NBT::Error::pushError;
+    using std::vector, std::array, std::span, std::string, std::istream, std::move, std::bit_cast, std::to_string, std::format, boost::unordered_flat_map, NBT::Aux::readVarText, NBT::Aux::readIVarInt, NBT::Aux::readUVarInt, NBT::Error::clearErrors, NBT::Error::pushError;
 
-    [[nodiscard]] inline bool readObject     (FileReader&, TagObject&     , bool topLevel = false) noexcept;
-                  inline void readIVarInt    (FileReader&, TagIVarInt&    )                        noexcept;
-                  inline void readUVarInt    (FileReader&, TagUVarInt&    )                        noexcept;
-                  inline void readBool       (FileReader&, TagBool&       , u8)                    noexcept;
-                  inline void readHex        (FileReader&, TagHex&        , u8)                    noexcept;
-                  inline void readFloat      (FileReader&, TagFloat&      )                        noexcept;
-                  inline void readDouble     (FileReader&, TagDouble&     )                        noexcept;
-    [[nodiscard]] inline bool readArray      (FileReader&, TagArray&      , const Types)           noexcept;
-    [[nodiscard]] inline bool readString     (FileReader&, TagString&     )                        noexcept;
-                  inline void readRaw        (FileReader&, TagRaw&        )                        noexcept;
-    [[nodiscard]] inline bool readArrayBool  (FileReader&, TagArrayBool&  )                        noexcept;
-    [[nodiscard]] inline bool readArrayHex   (FileReader&, TagArrayHex&   )                        noexcept;
-    [[nodiscard]] inline bool readArrayFloat (FileReader&, TagArrayFloat& )                        noexcept;
-    [[nodiscard]] inline bool readArrayDouble(FileReader&, TagArrayDouble&)                        noexcept;
-    [[nodiscard]] inline bool readArrayRaw   (FileReader&, TagArrayRaw&   )                        noexcept;
+    template<Readable S> [[nodiscard]] inline bool readObject     (FileReader<S>&, TagObject&     , bool topLevel = false) noexcept;
+    template<Readable S>               inline void readIVarInt    (FileReader<S>&, TagIVarInt&    )                        noexcept;
+    template<Readable S>               inline void readUVarInt    (FileReader<S>&, TagUVarInt&    )                        noexcept;
+    template<Readable S>               inline void readBool       (FileReader<S>&, TagBool&       , u8)                    noexcept;
+    template<Readable S>               inline void readHex        (FileReader<S>&, TagHex&        , u8)                    noexcept;
+    template<Readable S>               inline void readFloat      (FileReader<S>&, TagFloat&      )                        noexcept;
+    template<Readable S>               inline void readDouble     (FileReader<S>&, TagDouble&     )                        noexcept;
+    template<Readable S> [[nodiscard]] inline bool readArray      (FileReader<S>&, TagArray&      , const Types)           noexcept;
+    template<Readable S> [[nodiscard]] inline bool readString     (FileReader<S>&, TagString&     )                        noexcept;
+    template<Readable S>               inline void readRaw        (FileReader<S>&, TagRaw&        )                        noexcept;
+    template<Readable S> [[nodiscard]] inline bool readArrayBool  (FileReader<S>&, TagArrayBool&  )                        noexcept;
+    template<Readable S> [[nodiscard]] inline bool readArrayHex   (FileReader<S>&, TagArrayHex&   )                        noexcept;
+    template<Readable S> [[nodiscard]] inline bool readArrayFloat (FileReader<S>&, TagArrayFloat& )                        noexcept;
+    template<Readable S> [[nodiscard]] inline bool readArrayDouble(FileReader<S>&, TagArrayDouble&)                        noexcept;
+    template<Readable S> [[nodiscard]] inline bool readArrayRaw   (FileReader<S>&, TagArrayRaw&   )                        noexcept;
 
     struct NBTFileInfo {
-        u64 fileSize{ 0 };
-        bool validFile{ false }, compressed{ false };
+        u64 fileSize{0};
+        bool validFile{false}, compressed{false};
     };
 
-    [[nodiscard]] inline bool read(const char* path, unordered_flat_map<string, Tag>& result) noexcept {
+    template<Readable S>
+    [[nodiscard]] inline bool readStream(S& source, unordered_flat_map<string, Tag>& result) noexcept {
         clearErrors();
-        FileReader cursor(path);
-        if (!cursor) {
-            pushError(string("File failed to open: ") + path);
-            return false;
-        }
+        FileReader<S> cursor(source);
+        result.clear();
+        if (!cursor) return false;
         if (cursor.empty()) {
-            //Empty file is valid, but contains no data.
-            result.clear();
-            if (!cursor.close()) pushError(format("Failed to close file: {}!", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())));
+            cursor.close();
             return true;
         }
-        //Caveat: We can actually treat the top level tags as they are in a embedded `Object` tag.
         TagObject topLevel;
         if (readObject(cursor, topLevel, true)) {
             result = move(topLevel.payload);
-            if (!cursor.close()) pushError(format("Failed to close file: {}!", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())));
+            cursor.close();
             return true;
         }
-        else if (!cursor.close()) pushError(format("Failed to close file: {}!", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())));
+        cursor.close();
         return false;
     }
 
-    [[nodiscard]] inline NBTFileInfo getFileInfo(const char* path) noexcept {
-        clearErrors();
-        NBTFileInfo result;
-        FileReader cursor(path);
-        result.validFile = !!cursor;
-        result.compressed = cursor.compressed();
-        result.fileSize = cursor.getFileSize();
-        if (!cursor.close()) pushError(format("Failed to close file: {}!", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())));
-        return result;
+    [[nodiscard]] inline bool readStream(istream& s, unordered_flat_map<string, Tag>& result) noexcept {
+        StdIn adapter(s);
+        return readStream(adapter, result);
     }
 
-    [[nodiscard]] inline bool readObject(FileReader& cursor, TagObject& result, bool topLevel) noexcept {
+    [[nodiscard]] inline bool readData(span<const u8> data, unordered_flat_map<string, Tag>& result) noexcept {
+        SpanIn adapter(data);
+        return readStream(adapter, result);
+    }
+
+    template<Readable S>
+    [[nodiscard]] inline NBTFileInfo getFileInfo(S& source) noexcept {
+        clearErrors();
+        FileReader<S> cursor(source);
+        return {
+            .fileSize = cursor.getFileSize(),
+            .validFile = !!cursor,
+            .compressed = cursor.compressed()
+        };
+    }
+
+    template<Readable S>
+    [[nodiscard]] inline bool readObject(FileReader<S>& cursor, TagObject& result, bool topLevel) noexcept {
         auto type = getType(*cursor);
         while (topLevel ? !!cursor : type != Types::ObjectEnd) {
             switch (type) {
@@ -214,15 +223,16 @@ namespace NBT::IO {
         return true;
     }
 
-    inline void readIVarInt(FileReader& cursor, TagIVarInt& result) noexcept { result.payload = readIVarInt(cursor); }
+    template<Readable S> inline void readIVarInt(FileReader<S>& cursor, TagIVarInt& result) noexcept { result.payload = readIVarInt(cursor); }
 
-    inline void readUVarInt(FileReader& cursor, TagUVarInt& result) noexcept { result.payload = readUVarInt(cursor); }
+    template<Readable S> inline void readUVarInt(FileReader<S>& cursor, TagUVarInt& result) noexcept { result.payload = readUVarInt(cursor); }
 
-    inline void readBool(FileReader& cursor, TagBool& result, u8 cv) noexcept { result.payload = cv & 0x01; }
+    template<Readable S> inline void readBool(FileReader<S>&, TagBool& result, u8 cv) noexcept { result.payload = cv & 0x01; }
 
-    inline void readHex(FileReader& cursor, TagHex& result, u8 cv) noexcept { result.payload = cv & 0x0F; }
+    template<Readable S> inline void readHex(FileReader<S>&, TagHex& result, u8 cv) noexcept { result.payload = cv & 0x0F; }
 
-    inline void readFloat(FileReader& cursor, TagFloat& result) noexcept {
+    template<Readable S>
+    inline void readFloat(FileReader<S>& cursor, TagFloat& result) noexcept {
         u32 temp = 0;
         for (u8 i = 0; i < sizeof(float); i++) {
             auto byte = *cursor;
@@ -232,7 +242,8 @@ namespace NBT::IO {
         result.payload = bit_cast<float>(temp);
     }
 
-    inline void readDouble(FileReader& cursor, TagDouble& result) noexcept {
+    template<Readable S>
+    inline void readDouble(FileReader<S>& cursor, TagDouble& result) noexcept {
         u64 temp = 0;
         for (u8 i = 0; i < sizeof(double); i++) {
             auto byte = *cursor;
@@ -242,7 +253,8 @@ namespace NBT::IO {
         result.payload = bit_cast<double>(temp);
     }
 
-    [[nodiscard]] inline bool readArray(FileReader& cursor, TagArray& result, const Types type) noexcept {
+    template<Readable S>
+    [[nodiscard]] inline bool readArray(FileReader<S>& cursor, TagArray& result, const Types type) noexcept {
         auto count = readUVarInt(cursor);
         result.payload.resize(count);
         switch (type) {
@@ -281,7 +293,6 @@ namespace NBT::IO {
                         for (u64 i = 0; i < count; i++) {
                             new (&result.payload[i].tagArray) TagArray;
                             result.payload[i].type = Types::Array;
-                            //Pass head block of each array.
                             ++cursor;
                             if (!readArray(cursor, result.payload[i].tagArray, type)) return false;
                         }
@@ -291,7 +302,6 @@ namespace NBT::IO {
                         for(u64 i = 0; i < count; i++) {
                             new (&result.payload[i].tagArrayBool) TagArrayBool;
                             result.payload[i].type = Types::ArrayBool;
-                            //Pass head block of each array.
                             ++cursor;
                             if (!readArrayBool(cursor, result.payload[i].tagArrayBool)) return false;
                         }
@@ -301,7 +311,6 @@ namespace NBT::IO {
                         for (u64 i = 0; i < count; i++) {
                             new (&result.payload[i].tagArrayHex) TagArrayHex;
                             result.payload[i].type = Types::ArrayHex;
-                            //Pass head block of each array.
                             ++cursor;
                             if (!readArrayHex(cursor, result.payload[i].tagArrayHex)) return false;
                         }
@@ -311,7 +320,6 @@ namespace NBT::IO {
                         for (u64 i = 0; i < count; i++) {
                             new (&result.payload[i].tagArrayFloat) TagArrayFloat;
                             result.payload[i].type = Types::ArrayFloat;
-                            //Pass head block of each array.
                             ++cursor;
                             if (!readArrayFloat(cursor, result.payload[i].tagArrayFloat)) return false;
                         }
@@ -321,7 +329,6 @@ namespace NBT::IO {
                         for (u64 i = 0; i < count; i++) {
                             new (&result.payload[i].tagArrayDouble) TagArrayDouble;
                             result.payload[i].type = Types::ArrayDouble;
-                            //Pass head block of each array.
                             ++cursor;
                             if (!readArrayDouble(cursor, result.payload[i].tagArrayDouble)) return false;
                         }
@@ -331,7 +338,6 @@ namespace NBT::IO {
                         for (u64 i = 0; i < count; i++) {
                             new (&result.payload[i].tagArrayRaw) TagArrayRaw;
                             result.payload[i].type = Types::ArrayRaw;
-                            //Pass head block of each array.
                             ++cursor;
                             if (!readArrayRaw(cursor, result.payload[i].tagArrayRaw)) return false;
                         }
@@ -352,7 +358,7 @@ namespace NBT::IO {
                 }
                 break;
             }
-            default: { //ObjectEnd, etc.
+            default: {
                 pushError(format("Invalid second type {} at pos {}!", static_cast<u8>(type), cursor.currentOffset() - 1));
                 return false;
             }
@@ -362,79 +368,58 @@ namespace NBT::IO {
 
     inline constexpr const char* EOF_ERROR = "Failed to read data, EOF reached!";
 
-    [[nodiscard]] inline bool readString(FileReader& cursor, TagString& result) noexcept {
+    template<Readable S>
+    [[nodiscard]] inline bool readString(FileReader<S>& cursor, TagString& result) noexcept {
         auto byteLength = readUVarInt(cursor);
         vector<c8> temp(byteLength);
         u64 actualByteLength = cursor.getContent(reinterpret_cast<u8*>(temp.data()), byteLength);
-        if (actualByteLength < byteLength) {
-            pushError(EOF_ERROR);
-            return false;
-        }
+        if (actualByteLength < byteLength) { pushError(EOF_ERROR); return false; }
         result.payload = u8string(temp.begin(), temp.end());
         return true;
     }
 
-    inline void readRaw(FileReader& cursor, TagRaw& result) noexcept {
-        result.payload = *cursor;
-        ++cursor;
-    }
+    template<Readable S>
+    inline void readRaw(FileReader<S>& cursor, TagRaw& result) noexcept { result.payload = *cursor; ++cursor; }
 
-    [[nodiscard]] inline bool readArrayBool(FileReader& cursor, TagArrayBool& result) noexcept {
+    template<Readable S>
+    [[nodiscard]] inline bool readArrayBool(FileReader<S>& cursor, TagArrayBool& result) noexcept {
         auto count = readUVarInt(cursor);
         result.payload.resize(count);
-        u64 actualLength = cursor.getContent(result.payload.data(), count);
-        if (actualLength < count) {
-            pushError(EOF_ERROR);
-            return false;
-        }
-        //Modern compilers will auto vectorize this.
+        if (cursor.getContent(result.payload.data(), count) < count) { pushError(EOF_ERROR); return false; }
         for (u64 i = 0; i < count; i++) result.payload[i] &= 0x01;
         return true;
     }
 
-    [[nodiscard]] inline bool readArrayHex(FileReader& cursor, TagArrayHex& result) noexcept {
+    template<Readable S>
+    [[nodiscard]] inline bool readArrayHex(FileReader<S>& cursor, TagArrayHex& result) noexcept {
         auto count = readUVarInt(cursor);
         result.payload.resize(count);
-        u64 actualLength = cursor.getContent(result.payload.data(), count);
-        if (actualLength < count) {
-            pushError(EOF_ERROR);
-            return false;
-        }
-        //Modern compilers will auto vectorize this.
+        if (cursor.getContent(result.payload.data(), count) < count) { pushError(EOF_ERROR); return false; }
         for (u64 i = 0; i < count; i++) result.payload[i] &= 0x0F;
         return true;
     }
 
-    [[nodiscard]] inline bool readArrayFloat(FileReader& cursor, TagArrayFloat& result) noexcept {
+    template<Readable S>
+    [[nodiscard]] inline bool readArrayFloat(FileReader<S>& cursor, TagArrayFloat& result) noexcept {
         auto count = readUVarInt(cursor);
         result.payload.resize(count);
-        u64 actualLength = cursor.getContent(reinterpret_cast<u8*>(result.payload.data()), count * 4);
-        if (actualLength < count * 4) {
-            pushError(EOF_ERROR);
-            return false;
-        }
+        if (cursor.getContent(reinterpret_cast<u8*>(result.payload.data()), count * 4) < count * 4) { pushError(EOF_ERROR); return false; }
         return true;
     }
 
-    [[nodiscard]] inline bool readArrayDouble(FileReader& cursor, TagArrayDouble& result) noexcept {
+    template<Readable S>
+    [[nodiscard]] inline bool readArrayDouble(FileReader<S>& cursor, TagArrayDouble& result) noexcept {
         auto count = readUVarInt(cursor);
         result.payload.resize(count);
-        u64 actualLength = cursor.getContent(reinterpret_cast<u8*>(result.payload.data()), count * 8);
-        if (actualLength < count * 8) {
-            pushError(EOF_ERROR);
-            return false;
-        }
+        if (cursor.getContent(reinterpret_cast<u8*>(result.payload.data()), count * 8) < count * 8) { pushError(EOF_ERROR); return false; }
         return true;
     }
 
-    [[nodiscard]] inline bool readArrayRaw(FileReader& cursor, TagArrayRaw& result) noexcept {
+    template<Readable S>
+    [[nodiscard]] inline bool readArrayRaw(FileReader<S>& cursor, TagArrayRaw& result) noexcept {
         auto count = readUVarInt(cursor);
         result.payload.resize(count);
-        u64 actualLength = cursor.getContent(result.payload.data(), count);
-        if (actualLength < count) {
-            pushError(EOF_ERROR);
-            return false;
-        }
+        if (cursor.getContent(result.payload.data(), count) < count) { pushError(EOF_ERROR); return false; }
         return true;
     }
 }

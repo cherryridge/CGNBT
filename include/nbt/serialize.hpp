@@ -2,7 +2,7 @@
 #include <string>
 #include <boost/unordered/unordered_map.hpp>
 
-#include "type.hpp"
+#include "types.hpp"
 
 namespace NBT::IO {
     using std::string, boost::unordered_flat_map, NBT::Type::Tag;
