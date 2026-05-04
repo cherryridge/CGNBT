@@ -12,14 +12,13 @@
 namespace NBT::Type {
     typedef int8_t i8;
     typedef uint8_t u8;
-    typedef char8_t c8;
     typedef int16_t i16;
     typedef uint16_t u16;
     typedef int32_t i32;
     typedef uint32_t u32;
     typedef int64_t i64;
     typedef uint64_t u64;
-    using std::vector, std::array, std::string, std::u8string, std::numeric_limits, std::to_string, std::format, std::move, std::forward, std::enable_if_t, std::decay_t, std::is_same_v, boost::unordered_flat_map, Utils::hexToString;
+    using std::vector, std::array, std::string, std::numeric_limits, std::to_string, std::format, std::move, std::forward, std::enable_if_t, std::decay_t, std::is_same_v, boost::unordered_flat_map, Utils::hexToString;
 
     template<typename T, typename U>
     concept equal = is_same_v<decay_t<T>, U>;
@@ -127,15 +126,15 @@ namespace NBT::Type {
     };
 
     struct TagString {
-        u8string payload;
+        string payload;
 
         [[nodiscard]] TagString() noexcept = default;
-        [[nodiscard]] TagString(const char* constStr) noexcept : payload(reinterpret_cast<const c8*>(constStr)) {}
-        [[nodiscard]] TagString(const string& str) noexcept : payload(reinterpret_cast<const c8*>(str.c_str()), str.size()) {}
-        template<typename T> requires equal<T, u8string>
+        [[nodiscard]] TagString(const char* constStr) noexcept : payload(constStr) {}
+        [[nodiscard]] TagString(const string& str) noexcept : payload(str) {}
+        template<typename T> requires equal<T, string>
         [[nodiscard]] TagString(T&& payload) noexcept : payload(forward<T>(payload)) {}
 
-        [[nodiscard]] string toString() const noexcept { return "\"" + string(reinterpret_cast<const char*>(payload.c_str())) + "\""; }
+        [[nodiscard]] string toString() const noexcept { return "\"" + payload + "\""; }
     };
 
     struct TagRaw {

@@ -14,7 +14,6 @@
 #include "types.hpp"
 
 namespace NBT::IO {
-    typedef char8_t c8;
     typedef uint8_t u8;
     typedef uint32_t u32;
     typedef uint64_t u64;
@@ -371,10 +370,10 @@ namespace NBT::IO {
     template<Readable S>
     [[nodiscard]] inline bool readString(FileReader<S>& cursor, TagString& result) noexcept {
         auto byteLength = readUVarInt(cursor);
-        vector<c8> temp(byteLength);
+        vector<u8> temp(byteLength);
         u64 actualByteLength = cursor.getContent(reinterpret_cast<u8*>(temp.data()), byteLength);
         if (actualByteLength < byteLength) { pushError(EOF_ERROR); return false; }
-        result.payload = u8string(temp.begin(), temp.end());
+        result.payload = string(temp.begin(), temp.end());
         return true;
     }
 
