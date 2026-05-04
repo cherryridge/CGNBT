@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <boost/unordered/unordered_map.hpp>
+#include <boost/unordered/unordered_flat_map.hpp>
 
 #include "types.hpp"
 

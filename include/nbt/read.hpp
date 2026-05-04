@@ -5,7 +5,7 @@
 #include <span>
 #include <string>
 #include <vector>
-#include <boost/unordered/unordered_map.hpp>
+#include <boost/unordered/unordered_flat_map.hpp>
 
 #include "adapters.hpp"
 #include "auxiliary.hpp"

@@ -3,7 +3,7 @@
 #include <format>
 #include <ostream>
 #include <vector>
-#include <boost/unordered/unordered_map.hpp>
+#include <boost/unordered/unordered_flat_map.hpp>
 #include <zstd.h>
 
 #include "adapters.hpp"
