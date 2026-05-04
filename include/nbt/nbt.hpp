@@ -8,7 +8,7 @@
 
 namespace NBT {
     //IO APIs
-    using NBT::IO::readStream, NBT::IO::writeStream, NBT::IO::writeData, NBT::IO::serialize, NBT::IO::getFileInfo, NBT::IO::NBTFileInfo;
+    using NBT::IO::readStream, NBT::IO::readData, NBT::IO::writeStream, NBT::IO::writeData, NBT::IO::serialize, NBT::IO::getFileInfo, NBT::IO::NBTFileInfo;
     
     //Errors
     using NBT::Error::getLastError, NBT::Error::getErrors;
