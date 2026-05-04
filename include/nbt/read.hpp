@@ -67,7 +67,7 @@ namespace NBT::IO {
         return readStream(adapter, result);
     }
 
-    [[nodiscard]] inline bool readData(span<const u8> data, unordered_flat_map<string, Tag>& result) noexcept {
+    [[nodiscard]] inline bool readData(const span<const u8> data, unordered_flat_map<string, Tag>& result) noexcept {
         SpanIn adapter(data);
         return readStream(adapter, result);
     }
