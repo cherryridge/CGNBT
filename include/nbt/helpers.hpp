@@ -1,19 +1,21 @@
 #pragma once
+#include <boost/unordered/unordered_flat_map.hpp>
 
 #include "types.hpp"
 
 namespace NBT::Helpers {
     using namespace NBT::Type;
+    using boost::unordered_flat_map;
 
     template <Types T>
     struct TagOf {
-        using value = void;
+        using type = void;
     };
 
-    #define LINK_TYPE_TO_TAG(type, tag, member) \
+    #define LINK_TYPE_TO_TAG(type_, tag, member) \
     template <> \
-    struct TagOf<type> { \
-        using value = tag; \
+    struct TagOf<type_> { \
+        using type = tag; \
         static constexpr auto field = &Tag::member; \
     };
 
@@ -36,8 +38,15 @@ namespace NBT::Helpers {
     #undef LINK_TYPE_TO_TAG
 
     template <Types T>
-    [[nodiscard]] inline decltype(TagOf<T>::value::payload) valueOr(const Tag& tag, decltype(TagOf<T>::value::payload) defaultValue = {}) noexcept {
+    [[nodiscard]] inline decltype(TagOf<T>::type::payload) valueOr(const Tag& tag, decltype(TagOf<T>::type::payload) defaultValue = {}) noexcept {
         if (tag.type != T) return defaultValue;
         return tag.*(TagOf<T>::field).payload;
+    }
+
+    template <Types T>
+    [[nodiscard]] inline decltype(TagOf<T>::type::payload) memberOr(const unordered_flat_map<string, Tag>& members, const string& name, decltype(TagOf<T>::type::payload) defaultValue = {}) noexcept {
+        const auto it = members.find(name);
+        if (it == members.end()) return defaultValue;
+        return valueOr<T>(it->second, defaultValue);
     }
 }

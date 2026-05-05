@@ -21,5 +21,5 @@ namespace NBT {
     using NBT::Type::Types;
 
     //Helpers
-    using NBT::Helpers::TagOf, NBT::Helpers::valueOr;
+    using NBT::Helpers::TagOf, NBT::Helpers::valueOr, NBT::Helpers::memberOr;
 }
