@@ -23,7 +23,7 @@ int main() {
     cout << "========Reading NBT From File========" << endl;
     unordered_flat_map<string, Tag> result;
     auto start = steady_clock::now();
-    ifstream f("E:/a.cgb", ios::binary);
+    ifstream f("../../../tests/a.cgb", ios::binary);
     if (readStream(f, result)) {
         auto end = steady_clock::now();
         cout << "Parse took " << duration_cast<microseconds>(end - start).count() << "us" << endl;
@@ -88,13 +88,13 @@ int main() {
     writeTest.emplace("the_most_thorough_embedding_test_ever", TagObject(tempMap));
 
     {
-        ofstream f("E:/test.cgb", ios::binary | ios::trunc);
+        ofstream f("../../../tests/test.cgb", ios::binary | ios::trunc);
         cout << writeStream(f, writeTest, true) << endl;
     }
 
     unordered_flat_map<string, Tag> result2;
     auto start = steady_clock::now();
-    ifstream f("E:/test.cgb", ios::binary);
+    ifstream f("../../../tests/test.cgb", ios::binary);
     if (readStream(f, result2)) {
         auto end = steady_clock::now();
         cout << "Parse took " << duration_cast<microseconds>(end - start).count() << "us" << endl;
@@ -113,11 +113,11 @@ int main() {
     cout << "========Empty Files========" << endl;
     unordered_flat_map<string, Tag> emptyTest1, result1;
     {
-        ofstream f("E:/empty1.cgb", ios::binary | ios::trunc);
+        ofstream f("../../../tests/empty1.cgb", ios::binary | ios::trunc);
         cout << writeStream(f, emptyTest1, true) << endl;
     }
     {
-        ifstream f("E:/empty1.cgb", ios::binary);
+        ifstream f("../../../tests/empty1.cgb", ios::binary);
         if (readStream(f, result1)) {
             auto str = serialize(result1);
             cout << str << endl;
@@ -132,11 +132,11 @@ int main() {
 
     unordered_flat_map<string, Tag> emptyTest2, result2;
     {
-        ofstream f("E:/empty2.cgb", ios::binary | ios::trunc);
+        ofstream f("../../../tests/empty2.cgb", ios::binary | ios::trunc);
         cout << writeStream(f, emptyTest2) << endl;
     }
     {
-        ifstream f("E:/empty2.cgb", ios::binary);
+        ifstream f("../../../tests/empty2.cgb", ios::binary);
         if (readStream(f, result2)) {
             auto str = serialize(result2);
             cout << str << endl;
