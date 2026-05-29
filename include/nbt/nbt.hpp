@@ -27,5 +27,5 @@ namespace NBT {
         template <typename K, typename V> \
         using map = mapTemplate<K, V>; \
     }; \
-    using mapTypeOutput = policyOutput::map<std::string, Tag<policyOutput>>;
+    using mapTypeOutput = policyOutput::map<std::string, NBT::Tag<policyOutput>>;
 }
