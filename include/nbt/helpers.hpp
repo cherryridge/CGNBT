@@ -1,32 +1,32 @@
 #pragma once
-#include <boost/unordered/unordered_flat_map.hpp>
 
+#include "mapLike.hpp"
 #include "types.hpp"
 
 namespace NBT::Helpers {
     using namespace NBT::Type;
-    using boost::unordered_flat_map;
+    using NBT::MapLike::MapLike;
 
-    template <Types T>
+    template <Types T, typename P> requires MapLike<P>
     struct TagOf {
         using type = void;
     };
 
     #define LINK_TYPE_TO_TAG(type_, tag, member) \
-    template <> \
-    struct TagOf<type_> { \
+    template <typename P> requires MapLike<P> \
+    struct TagOf<type_, P> { \
         using type = tag; \
-        static constexpr auto field = &Tag::member; \
+        static constexpr auto field = &Tag<P>::member; \
     };
 
-    LINK_TYPE_TO_TAG(Types::Object, TagObject, tagObject)
+    LINK_TYPE_TO_TAG(Types::Object, TagObject<P>, tagObject)
     LINK_TYPE_TO_TAG(Types::IVarInt, TagIVarInt, tagIVarInt)
     LINK_TYPE_TO_TAG(Types::UVarInt, TagUVarInt, tagUVarInt)
     LINK_TYPE_TO_TAG(Types::Bool, TagBool, tagBool)
     LINK_TYPE_TO_TAG(Types::Hex, TagHex, tagHex)
     LINK_TYPE_TO_TAG(Types::Float, TagFloat, tagFloat)
     LINK_TYPE_TO_TAG(Types::Double, TagDouble, tagDouble)
-    LINK_TYPE_TO_TAG(Types::Array, TagArray, tagArray)
+    LINK_TYPE_TO_TAG(Types::Array, TagArray<P>, tagArray)
     LINK_TYPE_TO_TAG(Types::String, TagString, tagString)
     LINK_TYPE_TO_TAG(Types::Raw, TagRaw, tagRaw)
     LINK_TYPE_TO_TAG(Types::ArrayBool, TagArrayBool, tagArrayBool)
@@ -37,16 +37,16 @@ namespace NBT::Helpers {
 
     #undef LINK_TYPE_TO_TAG
 
-    template <Types T>
-    [[nodiscard]] inline decltype(TagOf<T>::type::payload) valueOr(const Tag& tag, decltype(TagOf<T>::type::payload) defaultValue = {}) noexcept {
+    template <Types T, typename P> requires MapLike<P>
+    [[nodiscard]] inline decltype(TagOf<T, P>::type::payload) valueOr(const Tag<P>& tag, decltype(TagOf<T, P>::type::payload) defaultValue = {}) noexcept {
         if (tag.type != T) return defaultValue;
-        return tag.*(TagOf<T>::field).payload;
+        return (tag.*(TagOf<T, P>::field)).payload;
     }
 
-    template <Types T>
-    [[nodiscard]] inline decltype(TagOf<T>::type::payload) memberOr(const unordered_flat_map<string, Tag>& members, const string& name, decltype(TagOf<T>::type::payload) defaultValue = {}) noexcept {
+    template <Types T, typename P> requires MapLike<P>
+    [[nodiscard]] inline decltype(TagOf<T, P>::type::payload) memberOr(const typename P::template map<string, Tag<P>>& members, const string& name, decltype(TagOf<T, P>::type::payload) defaultValue = {}) noexcept {
         const auto it = members.find(name);
         if (it == members.end()) return defaultValue;
-        return valueOr<T>(it->second, defaultValue);
+        return valueOr<T, P>(it->second, defaultValue);
     }
 }

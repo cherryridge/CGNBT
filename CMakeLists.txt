@@ -73,14 +73,6 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
 #----------------------------------
 
-#-------------Boost----------------
-option(CGNBT_HAS_BOOST "Whether to not add Boost dependency privately." OFF)
-
-if (NOT CGNBT_HAS_BOOST)
-    set(CGNBT_BOOST_DIRECTORY "libs/boost" CACHE STRING "")
-endif()
-#----------------------------------
-
 #--------------Zstd----------------
 option(CGNBT_HAS_ZSTD "Whether to not add Zstd dependency privately." OFF)
 
@@ -109,17 +101,6 @@ endif()
 add_library(${PROJECT_NAME} INTERFACE)
 
 target_include_directories(${PROJECT_NAME} INTERFACE
-    "${CGNBT_BOOST_DIRECTORY}/assert/include"
-    "${CGNBT_BOOST_DIRECTORY}/config/include"
-    "${CGNBT_BOOST_DIRECTORY}/container_hash/include"
-    "${CGNBT_BOOST_DIRECTORY}/core/include"
-    "${CGNBT_BOOST_DIRECTORY}/describe/include"
-    "${CGNBT_BOOST_DIRECTORY}/mp11/include"
-    "${CGNBT_BOOST_DIRECTORY}/predef/include"
-    "${CGNBT_BOOST_DIRECTORY}/static_assert/include"
-    "${CGNBT_BOOST_DIRECTORY}/throw_exception/include"
-    "${CGNBT_BOOST_DIRECTORY}/unordered/include"
-
     "${CGNBT_ZSTD_DIRECTORY}/lib"
 
     "${CMAKE_SOURCE_DIR}/include"

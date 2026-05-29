@@ -22,4 +22,10 @@ namespace NBT {
 
     //Helpers
     using NBT::Helpers::TagOf, NBT::Helpers::valueOr, NBT::Helpers::memberOr;
+    #define CGNBT_USE_MAP_CONTAINER(mapTemplate, mapTypeOutput, policyOutput) \
+    struct policyOutput { \
+        template <typename K, typename V> \
+        using map = mapTemplate<K, V>; \
+    }; \
+    using mapTypeOutput = policyOutput::map<std::string, Tag<policyOutput>>;
 }

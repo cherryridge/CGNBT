@@ -1,13 +1,14 @@
 #pragma once
 #include <string>
-#include <boost/unordered/unordered_flat_map.hpp>
 
+#include "mapLike.hpp"
 #include "types.hpp"
 
 namespace NBT::IO {
-    using std::string, boost::unordered_flat_map, NBT::Type::Tag;
+    using std::string, NBT::Type::Tag, NBT::MapLike::MapLike;
 
-    inline string serialize(const unordered_flat_map<string, Tag>& data) noexcept {
+    template <typename P> requires MapLike<P>
+    inline string serialize(const typename P::template map<string, Tag<P>>& data) noexcept {
         //Reason why we are not making a TagObject out of it and why is here even a `serialize.hpp`: NO DATA COPYING PLEASE!
         string result("{");
         bool first = true;
@@ -25,5 +26,6 @@ namespace NBT::IO {
         return result;
     }
 
-    inline string serialize(const Tag& singleTag) noexcept { return singleTag.toString(); }
+    template <typename P> requires MapLike<P>
+    inline string serialize(const Tag<P>& singleTag) noexcept { return singleTag.toString(); }
 }

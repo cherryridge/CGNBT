@@ -5,12 +5,12 @@
 #include <span>
 #include <string>
 #include <vector>
-#include <boost/unordered/unordered_flat_map.hpp>
 
 #include "adapters.hpp"
 #include "auxiliary.hpp"
 #include "error.hpp"
 #include "FileReader.hpp"
+#include "mapLike.hpp"
 #include "types.hpp"
 
 namespace NBT::IO {
@@ -18,31 +18,46 @@ namespace NBT::IO {
     typedef uint32_t u32;
     typedef uint64_t u64;
     using namespace NBT::Type;
-    using std::vector, std::array, std::span, std::string, std::istream, std::move, std::bit_cast, std::to_string, std::format, boost::unordered_flat_map, NBT::Aux::readVarText, NBT::Aux::readIVarInt, NBT::Aux::readUVarInt, NBT::Error::clearErrors, NBT::Error::pushError;
+    using std::vector, std::array, std::span, std::string, std::istream, std::move, std::bit_cast, std::to_string, std::format, NBT::Aux::readVarText, NBT::Aux::readIVarInt, NBT::Aux::readUVarInt, NBT::Error::clearErrors, NBT::Error::pushError, NBT::MapLike::MapLike;
 
-    template<Readable S> [[nodiscard]] inline bool readObject     (FileReader<S>&, TagObject&     , bool topLevel = false) noexcept;
-    template<Readable S>               inline void readIVarInt    (FileReader<S>&, TagIVarInt&    )                        noexcept;
-    template<Readable S>               inline void readUVarInt    (FileReader<S>&, TagUVarInt&    )                        noexcept;
-    template<Readable S>               inline void readBool       (FileReader<S>&, TagBool&       , u8)                    noexcept;
-    template<Readable S>               inline void readHex        (FileReader<S>&, TagHex&        , u8)                    noexcept;
-    template<Readable S>               inline void readFloat      (FileReader<S>&, TagFloat&      )                        noexcept;
-    template<Readable S>               inline void readDouble     (FileReader<S>&, TagDouble&     )                        noexcept;
-    template<Readable S> [[nodiscard]] inline bool readArray      (FileReader<S>&, TagArray&      , const Types)           noexcept;
-    template<Readable S> [[nodiscard]] inline bool readString     (FileReader<S>&, TagString&     )                        noexcept;
-    template<Readable S>               inline void readRaw        (FileReader<S>&, TagRaw&        )                        noexcept;
-    template<Readable S> [[nodiscard]] inline bool readArrayBool  (FileReader<S>&, TagArrayBool&  )                        noexcept;
-    template<Readable S> [[nodiscard]] inline bool readArrayHex   (FileReader<S>&, TagArrayHex&   )                        noexcept;
-    template<Readable S> [[nodiscard]] inline bool readArrayFloat (FileReader<S>&, TagArrayFloat& )                        noexcept;
-    template<Readable S> [[nodiscard]] inline bool readArrayDouble(FileReader<S>&, TagArrayDouble&)                        noexcept;
-    template<Readable S> [[nodiscard]] inline bool readArrayRaw   (FileReader<S>&, TagArrayRaw&   )                        noexcept;
+    template<Readable S, typename P> requires MapLike<P>
+    [[nodiscard]] inline bool readObject     (FileReader<S>&, TagObject<P>&  , bool topLevel = false) noexcept;
+    template<Readable S>
+                  inline void readIVarInt    (FileReader<S>&, TagIVarInt&      )                        noexcept;
+    template<Readable S>
+                  inline void readUVarInt    (FileReader<S>&, TagUVarInt&      )                        noexcept;
+    template<Readable S>
+                  inline void readBool       (FileReader<S>&, TagBool&         , u8)                    noexcept;
+    template<Readable S>
+                  inline void readHex        (FileReader<S>&, TagHex&          , u8)                    noexcept;
+    template<Readable S>
+                  inline void readFloat      (FileReader<S>&, TagFloat&        )                        noexcept;
+    template<Readable S>
+                  inline void readDouble     (FileReader<S>&, TagDouble&       )                        noexcept;
+    template<Readable S, typename P> requires MapLike<P>
+    [[nodiscard]] inline bool readArray      (FileReader<S>&, TagArray<P>&   , const Types)           noexcept;
+    template<Readable S>
+    [[nodiscard]] inline bool readString     (FileReader<S>&, TagString&       )                        noexcept;
+    template<Readable S>
+                  inline void readRaw        (FileReader<S>&, TagRaw&          )                        noexcept;
+    template<Readable S>
+    [[nodiscard]] inline bool readArrayBool  (FileReader<S>&, TagArrayBool&    )                        noexcept;
+    template<Readable S>
+    [[nodiscard]] inline bool readArrayHex   (FileReader<S>&, TagArrayHex&     )                        noexcept;
+    template<Readable S>
+    [[nodiscard]] inline bool readArrayFloat (FileReader<S>&, TagArrayFloat&   )                        noexcept;
+    template<Readable S>
+    [[nodiscard]] inline bool readArrayDouble(FileReader<S>&, TagArrayDouble&  )                        noexcept;
+    template<Readable S>
+    [[nodiscard]] inline bool readArrayRaw   (FileReader<S>&, TagArrayRaw&     )                        noexcept;
 
     struct NBTFileInfo {
         u64 fileSize{0};
         bool validFile{false}, compressed{false};
     };
 
-    template<Readable S>
-    [[nodiscard]] inline bool readStream(S& source, unordered_flat_map<string, Tag>& result) noexcept {
+    template<typename P, Readable S> requires MapLike<P>
+    [[nodiscard]] inline bool readStream(S& source, typename P::template map<string, Tag<P>>& result) noexcept {
         clearErrors();
         FileReader<S> cursor(source);
         result.clear();
@@ -51,7 +66,7 @@ namespace NBT::IO {
             cursor.close();
             return true;
         }
-        TagObject topLevel;
+        TagObject<P> topLevel;
         if (readObject(cursor, topLevel, true)) {
             result = move(topLevel.payload);
             cursor.close();
@@ -61,14 +76,16 @@ namespace NBT::IO {
         return false;
     }
 
-    [[nodiscard]] inline bool readStream(istream& s, unordered_flat_map<string, Tag>& result) noexcept {
+    template <typename P> requires MapLike<P>
+    [[nodiscard]] inline bool readStream(istream& s, typename P::template map<string, Tag<P>>& result) noexcept {
         StdIn adapter(s);
-        return readStream(adapter, result);
+        return readStream<P>(adapter, result);
     }
 
-    [[nodiscard]] inline bool readData(const span<const u8> data, unordered_flat_map<string, Tag>& result) noexcept {
+    template <typename P> requires MapLike<P>
+    [[nodiscard]] inline bool readData(const span<const u8> data, typename P::template map<string, Tag<P>>& result) noexcept {
         SpanIn adapter(data);
-        return readStream(adapter, result);
+        return readStream<P>(adapter, result);
     }
 
     template<Readable S>
@@ -82,14 +99,14 @@ namespace NBT::IO {
         };
     }
 
-    template<Readable S>
-    [[nodiscard]] inline bool readObject(FileReader<S>& cursor, TagObject& result, bool topLevel) noexcept {
+    template<Readable S, typename P> requires MapLike<P>
+    [[nodiscard]] inline bool readObject(FileReader<S>& cursor, TagObject<P>& result, bool topLevel) noexcept {
         auto type = getType(*cursor);
         while (topLevel ? !!cursor : type != Types::ObjectEnd) {
             switch (type) {
                 case Types::Object: {
                     ++cursor;
-                    TagObject temp;
+                    TagObject<P> temp;
                     string name = readVarText(cursor);
                     if (readObject(cursor, temp)) result.payload.emplace(name, move(temp));
                     else return false;
@@ -148,7 +165,7 @@ namespace NBT::IO {
                 case Types::Array: {
                     auto secType = getSecondType(*cursor);
                     ++cursor;
-                    TagArray temp;
+                    TagArray<P> temp;
                     string name = readVarText(cursor);
                     if (readArray(cursor, temp, secType)) result.payload.emplace(name, move(temp));
                     else return false;
@@ -252,14 +269,14 @@ namespace NBT::IO {
         result.payload = bit_cast<double>(temp);
     }
 
-    template<Readable S>
-    [[nodiscard]] inline bool readArray(FileReader<S>& cursor, TagArray& result, const Types type) noexcept {
+    template<Readable S, typename P> requires MapLike<P>
+    [[nodiscard]] inline bool readArray(FileReader<S>& cursor, TagArray<P>& result, const Types type) noexcept {
         auto count = readUVarInt(cursor);
         result.payload.resize(count);
         switch (type) {
             case Types::Object: {
                 for (u64 i = 0; i < count; i++) {
-                    new (&result.payload[i].tagObject) TagObject;
+                    new (&result.payload[i].tagObject) TagObject<P>;
                     result.payload[i].type = Types::Object;
                     if (!readObject(cursor, result.payload[i].tagObject)) return false;
                 }
@@ -290,7 +307,7 @@ namespace NBT::IO {
                     case Types::Array:
                     case Types::String: {
                         for (u64 i = 0; i < count; i++) {
-                            new (&result.payload[i].tagArray) TagArray;
+                            new (&result.payload[i].tagArray) TagArray<P>;
                             result.payload[i].type = Types::Array;
                             ++cursor;
                             if (!readArray(cursor, result.payload[i].tagArray, type)) return false;

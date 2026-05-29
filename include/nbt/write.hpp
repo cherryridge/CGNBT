@@ -3,29 +3,31 @@
 #include <format>
 #include <ostream>
 #include <vector>
-#include <boost/unordered/unordered_flat_map.hpp>
 #include <zstd.h>
 
 #include "adapters.hpp"
 #include "auxiliary.hpp"
 #include "error.hpp"
 #include "FileReader.hpp"
+#include "mapLike.hpp"
 #include "types.hpp"
 
 namespace NBT::IO {
     typedef uint8_t u8;
     typedef uint64_t u64;
     using namespace NBT::Type;
-    using std::array, std::vector, std::format, std::ostream, boost::unordered_flat_map, NBT::Aux::writeVarText, NBT::Aux::writeIVarInt, NBT::Aux::writeUVarInt, NBT::Error::clearErrors, NBT::Error::pushError;
+    using std::array, std::vector, std::format, std::ostream, NBT::Aux::writeVarText, NBT::Aux::writeIVarInt, NBT::Aux::writeUVarInt, NBT::Error::clearErrors, NBT::Error::pushError, NBT::MapLike::MapLike;
 
-    [[nodiscard]] inline bool writeObject     (const TagObject&      , vector<u8>&) noexcept;
+    template <typename P> requires MapLike<P>
+    [[nodiscard]] inline bool writeObject     (const TagObject<P>& , vector<u8>&) noexcept;
                   inline void writeIVarInt    (const TagIVarInt&     , vector<u8>&) noexcept;
                   inline void writeUVarInt    (const TagUVarInt&     , vector<u8>&) noexcept;
                   inline void writeBool       (const TagBool&        , vector<u8>&) noexcept;
                   inline void writeHex        (const TagHex&         , vector<u8>&) noexcept;
                   inline void writeFloat      (const TagFloat&       , vector<u8>&) noexcept;
                   inline void writeDouble     (const TagDouble&      , vector<u8>&) noexcept;
-    [[nodiscard]] inline bool writeArray      (const TagArray&       , vector<u8>&) noexcept;
+    template <typename P> requires MapLike<P>
+    [[nodiscard]] inline bool writeArray      (const TagArray<P>&  , vector<u8>&) noexcept;
                   inline void writeString     (const TagString&      , vector<u8>&) noexcept;
                   inline void writeRaw        (const TagRaw&         , vector<u8>&) noexcept;
                   inline void writeArrayBool  (const TagArrayBool&   , vector<u8>&) noexcept;
@@ -36,17 +38,18 @@ namespace NBT::IO {
 
     inline constexpr array<u8, 5> MAGIC = {'c', 'G', 'n', 'b', 'T'};
 
-    [[nodiscard]] inline bool writeData(const unordered_flat_map<string, Tag>& data, vector<u8>& result, bool addMagic = false) noexcept {
+    template <typename P> requires MapLike<P>
+    [[nodiscard]] inline bool writeData(const typename P::template map<string, Tag<P>>& data, vector<u8>& result, bool addMagic = false) noexcept {
         clearErrors();
         if (addMagic) result.insert(result.end(), MAGIC.begin(), MAGIC.end());
-        TagObject obj{data};
+        TagObject<P> obj{data};
         return writeObject(obj, result);
     }
 
-    template<Writable W>
-    [[nodiscard]] inline bool writeStream(W& dest, const unordered_flat_map<string, Tag>& data, bool zstd = false, u8 compressionLevel = 3) noexcept {
+    template<typename P, Writable W> requires MapLike<P>
+    [[nodiscard]] inline bool writeStream(W& dest, const typename P::template map<string, Tag<P>>& data, bool zstd = false, u8 compressionLevel = 3) noexcept {
         vector<u8> result;
-        if (!writeData(data, result, !zstd)) return false;
+        if (!writeData<P>(data, result, !zstd)) return false;
         if (zstd) {
             vector<u8> compressed(ZSTD_compressBound(result.size()));
             const auto sz = ZSTD_compress(compressed.data(), compressed.size(), result.data(), result.size(), compressionLevel > 22 ? 22 : compressionLevel == 0 ? 1 : compressionLevel);
@@ -67,17 +70,19 @@ namespace NBT::IO {
         return true;
     }
 
-    [[nodiscard]] inline bool writeStream(ostream& s, const unordered_flat_map<string, Tag>& data, bool zstd = false, u8 compressionLevel = 3) noexcept {
+    template <typename P> requires MapLike<P>
+    [[nodiscard]] inline bool writeStream(ostream& s, const typename P::template map<string, Tag<P>>& data, bool zstd = false, u8 compressionLevel = 3) noexcept {
         StdOut adapter(s);
-        return writeStream(adapter, data, zstd, compressionLevel);
+        return writeStream<P>(adapter, data, zstd, compressionLevel);
     }
 
-    [[nodiscard]] inline bool writeObject(const TagObject& data, vector<u8>& result) noexcept {
+    template <typename P> requires MapLike<P>
+    [[nodiscard]] inline bool writeObject(const TagObject<P>& data, vector<u8>& result) noexcept {
         for(const auto& [key, value] : data.payload) switch(value.type) {
             case Types::Object: {
                 result.push_back(static_cast<u8>(Types::Object) << 4);
                 writeVarText(key, result);
-                if (!writeObject(value.tagObject.payload, result)) return false;
+                if (!writeObject(value.tagObject, result)) return false;
                 result.push_back(static_cast<u8>(Types::ObjectEnd));
                 break;
             }
@@ -189,12 +194,13 @@ namespace NBT::IO {
         result.insert(result.end(), bytes, bytes + sizeof(double));
     }
 
-    [[nodiscard]] inline bool writeArray(const TagArray& data, vector<u8>& result) noexcept {
+    template <typename P> requires MapLike<P>
+    [[nodiscard]] inline bool writeArray(const TagArray<P>& data, vector<u8>& result) noexcept {
         writeUVarInt(data.payload.size(), result);
         if(!data.payload.empty()) switch (data.payload[0].type) {
             case Types::Object: {
                 for(u64 i = 0; i < data.payload.size(); i++) {
-                    if (!writeObject(data.payload[i].tagObject.payload, result)) return false;
+                    if (!writeObject(data.payload[i].tagObject, result)) return false;
                     result.push_back(static_cast<u8>(Types::ObjectEnd));
                 }
                 break;
